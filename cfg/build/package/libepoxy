@@ -58,7 +58,7 @@ PackageBuild()
 			--cmd-build='ninja' \
 			--dest-dir="$destDir" \
 			--cmd-install='meson' \
-			--install-options="install-strip";
+			--install-options="install";
 	
 	local pkgconfigDir="$dirBin/pkgconfig";
 

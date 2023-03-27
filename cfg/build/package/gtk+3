@@ -7,11 +7,13 @@ source script.lib.sh
 PackageBuildDependencies()
 {
 	printf '
+gdkpixbuf
 glib
 libepoxy
 meson
 ninja
 pango
+sharedmimeinfo
 ';
 }
 
