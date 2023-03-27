@@ -1,0 +1,49 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+make
+';
+
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+
+	local package='libXxf86vm';
+
+	local sourceDir=$(./latest.sh \
+		-b="$buildDir" \
+		--package="$package" \
+		--url='https://www.x.org/releases/individual/lib/'
+		);
+
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+
+		
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--configure-options=" \
+			--prefix=$prefix
+			" \
+		--dest-dir="$destDir" \
+		--install-options="install-strip";
+}

@@ -1,0 +1,76 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+make';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+
+	local package='opus';
+
+	LogErr 'retrieve the latest version';
+	local content=$(Download 'https://www.opus-codec.org/downloads/');
+
+	local url=$( \
+		printf '%s' "$content" | \
+ 		grep 'Source code:.*/opus/opus-[0-9].*' | \
+ 		grep -v '\-rc' | \
+ 		sed 's;.*\(https[^"]*\).*;\1;'
+		);
+
+	if [ -z "$url" ]; then
+		Die 'Unable to locate latest source code url';
+	fi;
+
+	local sourceDir=;
+	sourceDir=$(./download.sh \
+		-b="$buildDir" \
+		--url="$url";
+		);
+
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to download the latest version tar";
+	fi
+		
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--configure-options="\
+			--prefix=$prefix \
+			--disable-assertions \
+			--disable-doc \
+			--disable-extra-programs \
+			--disable-fixed-point-debug \
+			--disable-hardening \
+			" \
+		--dest-dir="$destDir" \
+		--install-options="install-strip";
+
+	local pkgconfigDir="$dirBin/pkgconfig";
+
+	DieIfFails ./adjust-pkgconfig.sh \
+		-p="$package" \
+		-d="$destDir" \
+		--prefix="$prefix" \
+		-o="$pkgconfigDir";
+
+}

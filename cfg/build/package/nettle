@@ -1,0 +1,48 @@
+#!/bin/sh
+
+source script.lib.sh
+
+source ../script/build-gnu.sh
+
+
+PackageBuildDependencies()
+{
+	printf '
+gmp
+m4
+make
+';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+
+	local package='nettle';
+
+	BuildGNU "$package" "$buildDir" "$prefix" "$destDir" 'install';
+
+	local pkgconfigDir="$dirBin/pkgconfig";
+
+	# NOTE: hogweed will only be built if gmp is found. And some libraries that
+	# depend on nettle, like gnutls, also require hogweed
+	local scriptNames="$package hogweed";
+	for s in $scriptNames; do
+		DieIfFails ./adjust-pkgconfig.sh \
+			-p="$s" \
+			-d="$destDir" \
+			--prefix="$prefix" \
+			-o="$pkgconfigDir";
+	done;	
+}

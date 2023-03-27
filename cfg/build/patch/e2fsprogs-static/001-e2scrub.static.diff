@@ -1,0 +1,11 @@
+--- e2fsprogs-1.46.5/scrub/Makefile.in
++++ patched/scrub/Makefile.in
+@@ -41,6 +41,8 @@
+ 
+ all:: $(PROGS) $(MANPAGES) $(CONFFILES) $(UDEV_RULES) $(SERVICE_FILES) $(CRONTABS) $(LIBPROGS)
+ 
++all-static:: all
++
+ e2scrub: $(DEP_SUBSTITUTE) e2scrub.in
+ 	$(E) "	SUBST $@"
+ 	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/e2scrub.in $@

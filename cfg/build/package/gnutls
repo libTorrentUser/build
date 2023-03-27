@@ -1,0 +1,107 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+make
+nettle
+p11-kit
+zstd
+';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageWarnings()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+	
+	local package='gnutls';
+
+
+	LogErr 'retrieving the latest source major version URL';
+
+	local baseURL='https://www.gnupg.org/ftp/gcrypt/gnutls';
+		
+	local content=$(Download "$baseURL");
+
+	local majorVersion=$( \
+		printf '%s' "$content" | \
+		grep -o 'href="v[^"]*' | \
+		sed 's;href="\(.*\);\1;' | \
+		sort -V | \
+		tail -n 1
+		);
+
+	if [ -z "$majorVersion" ]; then
+		Die 'Unable to locate latest source major version url';
+	fi;
+
+	local sourceDir;	
+	sourceDir=$(./latest.sh \
+		--url="${baseURL}/${majorVersion}" \
+		--package="${package}" \
+		-b="$buildDir");
+		
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version source code";
+	fi
+
+
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--configure-options="\
+			--prefix=$prefix \
+			--enable-static \
+			--disable-code-coverage \
+			--disable-bash-tests \
+			--disable-doc \
+			--disable-full-test-suite \
+			--disable-gtk-doc \
+	  		--disable-gtk-doc-html \
+	  		--disable-gtk-doc-pdf \
+	  		--disable-guile \
+			--disable-manpages \
+			--disable-nls \
+			--disable-openssl-compatibility \
+			--disable-rpath \
+			--disable-seccomp-tests \
+			--disable-tests \
+			--disable-tools \
+			--disable-valgrind-tests \
+			--with-included-libtasn1 \
+			--with-included-unistring \
+			--with-zstd
+			" \
+		--dest-dir="$destDir" \
+		--install-options="install-strip";
+
+	local pkgconfigDir="$dirBin/pkgconfig";
+
+	DieIfFails ./adjust-pkgconfig.sh \
+		-p="$package" \
+		-d="$destDir" \
+		--prefix="$prefix" \
+		-o="$pkgconfigDir";
+
+}

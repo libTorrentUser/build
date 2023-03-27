@@ -1,0 +1,114 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf 'make';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageBuild_zstd()
+{
+	local package="$1";
+	local buildTarget="$2";
+	local fullBuild="#3";
+	shift 3;
+
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	local npp="$4";
+	local dirBin="$5";
+
+	local sourceDir;	
+	sourceDir=$(./latest.sh \
+		--host='github' \
+		--github-regex='tarball_url.*' \
+		--package="facebook/zstd" \
+		-b="$buildDir");
+	
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+
+	# apply all patches. Notice that, unlike what we did above, patches might be
+	# specific to a certain version of zstd we are building, so here we
+	# use the $package variable instead of hard-coding the package name
+	local patchDir="../patch/${package}";
+	if [ $(CountItems "$patchDir") -gt 0 ]; then
+		for p in "$patchDir/"*; do
+			p=$(readlink -f "$p");
+			printf 'applying patch %s\n' "$p";
+			DieIfFails patch -p1 -i "$p" -d "$sourceDir";
+		done;
+	fi
+
+	# when $fullBuild is set, we build everything. Otherwise we only
+	# build the specified target. And in order to build some targets we cannot
+	# use the makefile located at the source tree root, we have to use the one
+	# inside the programs folder
+	local ZSTD_NODICT_value='1';
+	if [ "$fullBuild" -eq 1 ]; then
+		ZSTD_NODICT_value='0';
+	else
+		sourceDir="${sourceDir}/programs";
+	fi
+
+	# zstd has no configure script. The only way to set the prefix seems to be 
+	# by using an env variable
+	BACKTRACE="0" \
+	ZSTD_NOBENCH="1" \
+	ZSTD_NODICT="$ZSTD_NODICT_value" \
+	PREFIX="$prefix" \
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--in-source \
+		--no-configure \
+		--build-options="$buildTarget" \
+		--dest-dir="$destDir";
+
+	# some special targets, like zstd-small,  are not included in 
+	# "make install", so we have to manualy copy them to the dest dir
+	if [ "$fullBuild" -eq 0 ]; then
+		local fullDestDir="${destDir}/${prefix}/bin";
+		if [ ! -e "${fullDestDir}/${buildTarget}" ]; then
+			DieIfFails mkdir -p "$fullDestDir";
+			DieIfFails cp "${sourceDir}/${buildTarget}" "${fullDestDir}/";
+		fi
+	fi
+
+	# currently, there is no install-strip, so we strip the binaries ourself
+	printf 'stripping binaries...\n';
+	DieIfFails find "$destDir" -type f -exec strip {} \; ;
+
+	# only do this when performing a full build
+	if [ "$fullBuild" -eq 1 ]; then	
+		local pkgconfigDir="$dirBin/pkgconfig";
+
+		DieIfFails ./adjust-pkgconfig.sh \
+			-p="libzstd" \
+			-d="$destDir" \
+			--prefix="$prefix" \
+			-o="$pkgconfigDir";
+	fi
+}
+
+
+PackageBuild()
+{
+	PackageBuild_zstd \
+		'zstd' \
+		'zstd-release' \
+		'1' \
+		"$@";
+}

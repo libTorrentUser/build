@@ -1,0 +1,12 @@
+# when this is called by the build system, the work dir is the scripts dir
+source ../package/zstd;
+
+
+PackageBuild()
+{
+	PackageBuild_zstd \
+		'zstd-small-static' \
+		'zstd-small' \
+		'0' \
+		"$@";
+}

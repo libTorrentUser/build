@@ -1,0 +1,63 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+
+PackageBuildDependencies()
+{
+	printf "\
+make
+";
+
+}
+
+
+PackageRuntimeDependencies()
+{
+return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	local dirBin="$5";
+
+	local package='speexdsp';
+
+	local baseURL='https://ftp.osuosl.org/pub/xiph/releases/speex';
+	local content=$(Download "${baseURL}/");
+
+	local sourceDir=;
+	sourceDir=$(./latest.sh \
+		-b="$buildDir" \
+		-p="$package" \
+		--url='https://downloads.us.xiph.org/releases/speex';
+		);
+
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to download the latest version tar";
+	fi
+
+		
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--configure-options=" \
+			--enable-option-checking=fatal \
+			--prefix=$prefix \
+			--disable-valgrind \
+			--disable-fixed-point-debug" \
+		--dest-dir="$destDir" \
+		--install-options="install-strip";
+
+	DieIfFails ./adjust-pkgconfig.sh \
+		-p="$package" \
+		-d="$destDir" \
+		--prefix="$prefix" \
+		-o="${dirBin}/pkgconfig";
+}

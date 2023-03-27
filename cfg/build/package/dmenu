@@ -1,0 +1,58 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+libxinerama
+libxft
+make
+pkgconf
+';
+
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+
+	local package='dmenu';
+
+	local sourceDir;	
+	sourceDir=$(./latest.sh \
+		--url='https://dl.suckless.org/tools' \
+		--package="${package}" \
+		-b="$buildDir");
+	
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+
+	# dmenu hardcodes a couple of paths. We use pkg-config to retrieve the 
+	# correct values for this build system. It kind of sucks, since technically
+	# are adding a uneeded dependency here. But in reallity, pretty much all of
+	# dmenu dependencies require pkg-config, so it would have been probably been
+	# built or installed anyway.
+	DieIfFails sed -i 's;\(^FREETYPEINC = \).*;\1'$(pkg-config --variable=includedir freetype2)/freetype2';' "$sourceDir/config.mk";
+	
+	DieIfFails ./make.sh \
+			-b="$buildDir" \
+			-s="$sourceDir" \
+			--in-source \
+			--no-configure \
+			--dest-dir="$destDir";
+}

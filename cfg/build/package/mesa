@@ -1,0 +1,82 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+bison
+flex
+glslang
+libdrm
+libvdpau
+llvm-dev
+meson
+ninja
+python-mako
+python-markupsafe
+python-pygments';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageWarnings()
+{
+	printf 'mesa 22.0.2 cannot be built with "forced" LTO. But it seems we can use -Db_lto and then lto will only be disabled where it breaks stuff (see meson.build, search for gcc_lto_quirk).\ndefault_library=static (or "both") does not generate static libraries. Not even using LDFLAGS=-static (or via c_link_args and cpp_link_args). We are having to manually modify the meson.build file';
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+
+	local package='mesa';
+
+	local sourceDir;	
+	sourceDir=$(./latest.sh \
+		--url='https://archive.mesa3d.org' \
+		--package="$package" \
+		-b="$buildDir");
+	
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+
+	CC=cc-no.lto DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--cmd-configure='meson' \
+		--configure-options="\
+			--prefix=$prefix \
+			--buildtype=release \
+			-Db_ndebug=true \
+			-Db_lto=true \
+			-Dcpp_rtti=false \
+			-Dgles1=disabled \
+			-Dplatforms=x11 \
+			-Dstrip=true \
+			-Dvalgrind=disabled \
+			" \
+		--cmd-build='ninja' \
+		--cmd-install='meson' \
+		--install-options="install --destdir=$destDir";
+
+	for s in dri egl gbm gl glesv2 xatracker; do
+		DieIfFails ./adjust-pkgconfig.sh \
+			-p="$s" \
+			-d="$destDir" \
+			--prefix="$prefix" \
+			-o="${dirBin}/pkgconfig";
+	done;
+}

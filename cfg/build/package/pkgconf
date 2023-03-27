@@ -1,0 +1,103 @@
+#!/bin/sh
+
+source script.lib.sh
+
+source ../script/env.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+autoconf
+automake
+libtool
+make
+';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageWarnings()
+{
+	return 0;	
+}
+
+
+PackagePostBuild()
+{	
+	Log 'Post build...';
+	
+	local prefix="$1";
+	local destDir="$2";	
+	local dirBin="$3";
+	local envVarsFile="$4";
+
+	if EnvAddPackage "$envVarsFile" 'pkgconf'; then		
+		local path="${destDir}${prefix}/bin/pkg-config";
+		
+		EnvPathPrepend "$envVarsFile" 'PKG_CONFIG' "$path";
+	fi;	
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+	
+	local package='pkgconf';
+
+	local sourceDir;
+	sourceDir=$(./latest.sh \
+		--host='github-tag' \
+		--package="${package}/${package}" \
+		-b="$buildDir"
+		);
+
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+
+	printf 'environment variables\n%s\n' "$(printenv | sort)";
+
+	# first we have to generate the configure script because...
+	# Life would be way easier if releases of these  auto-tools based projects 
+	# came with everything one needed to just "configure; make;" them.
+	$(
+		# you must cd into the source dir before running libtoolize. Sucks, I
+		# know. We use a subshell to avoid having to cd back to where we were
+		DieIfFails cd "${sourceDir}";
+		DieIfFails libtoolize
+	); 	
+	DieIfFails "${sourceDir}/autogen.sh";
+	
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--configure-options="\
+			--prefix=$prefix \
+		" \
+		--dest-dir="$destDir" \
+		--install-options="install-strip";
+
+	# pkgconf is supposed to be a replacement to the old  pkg-config
+	local destBinDir="${destDir}${prefix}/bin";
+	DieIfFails ln -s "${destBinDir}/pkgconf" "${destBinDir}/pkg-config";
+
+	local pkgconfigDir="$dirBin/pkgconfig";
+
+	DieIfFails ./adjust-pkgconfig.sh \
+		-p='libpkgconf' \
+		-d="$destDir" \
+		--prefix="$prefix" \
+		-o="$pkgconfigDir";
+}

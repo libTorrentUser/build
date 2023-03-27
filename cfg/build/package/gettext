@@ -1,0 +1,47 @@
+#!/bin/sh
+
+source script.lib.sh
+
+source ../script/build-gnu.sh
+
+
+PackageBuildDependencies()
+{
+	printf 'make';
+}
+
+
+PackageBuild()
+{
+	# gettext must be configured with --enable-nls, otherwise libintl.so/a won't
+	# be built. BuildGNU always passes --disable-nls, therefore we can't use it.
+	# So far, gettext is the only gnu package that (kind of) breaks with 
+	# BuildGNU defaults (actually, it is the stupid glib, that depends on it, 
+	# that breaks), so, since it is the only one, for now, we'll manualy build
+	# it instead of calling BuildGNYU
+	#BuildGNU 'gettext' "$1" "$2" "$3";
+
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+	
+	local package='gettext';
+
+	local sourceDir=$(./latest.sh --host='gnu' --package="$package" -b="$buildDir");
+	
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+	
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--configure-options="\
+			--prefix=$prefix \
+			--enable-nls \
+			--disable-rpath" \
+		--dest-dir="$destDir" \
+		--install-options="install-strip";
+}

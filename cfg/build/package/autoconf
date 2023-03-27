@@ -1,0 +1,17 @@
+#!/bin/sh
+
+source script.lib.sh
+
+source ../script/build-gnu.sh
+
+
+PackageBuildDependencies()
+{
+	printf 'automake make';
+}
+
+
+PackageBuild()
+{
+	BuildGNU 'autoconf' "$1" "$2" "$3";
+}

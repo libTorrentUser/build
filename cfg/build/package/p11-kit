@@ -1,0 +1,66 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf 'meson ninja';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	local npp="$4";
+	local dirBin="$5";
+
+	local package='p11-kit';
+
+	local sourceDir;	
+	sourceDir=$(./latest.sh \
+		--host='github' \
+		--package="p11-glue/${package}" \
+		-b="$buildDir");
+	
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--cmd-configure='meson' \
+		--configure-options="\
+			--prefix=$prefix \
+			--buildtype=release \
+			-Db_ndebug=true \
+			-Db_lto=true \
+			-Dcpp_rtti=false \
+			-Dgtk_doc=false \
+			-Dman=false \
+			-Dnls=false \
+			-Dstrip=true \
+			-Dtest=false \
+			" \
+		--cmd-build='ninja' \
+		--cmd-install='meson' \
+		--install-options="install --destdir=$destDir";
+
+	local pkgconfigDir="$dirBin/pkgconfig";
+
+	DieIfFails ./adjust-pkgconfig.sh \
+		-p="${package}-1" \
+		-d="$destDir" \
+		--prefix="$prefix" \
+		-o="$pkgconfigDir";
+}

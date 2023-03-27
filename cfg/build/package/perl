@@ -1,0 +1,82 @@
+#!/bin/sh
+
+source script.lib.sh
+
+source ../script/env.sh
+
+
+PackageBuildDependencies()
+{
+	printf '
+make
+';
+
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackagePostBuild()
+{	
+	Log 'Post build...';
+	
+	local prefix="$1";
+	local destDir="$2";
+	local dirBin="$3";
+	local envVarsFile="$4";
+
+	if EnvAddPackage "$envVarsFile" 'perl'; then		
+		for path in $(find "${destDir}${prefix}/lib/perl"* -maxdepth 1 -mindepth 1 -type d ); do		
+			EnvPathPrepend "$envVarsFile" 'PERL5LIB' "$path";
+		done;
+	fi;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+
+	local package='perl';
+
+	local content=$(Download 'https://www.perl.org/get.html');
+		
+	local url=$( \
+		printf '%s' "$content" | \
+		grep -o 'http.*tar.gz' | \
+		head -n 1);
+
+	if [ -z "$url" ]; then
+		Die 'Unable to locate latest '"$package"' source code url';
+	fi;
+	
+	local sourceDir=;
+	sourceDir=$(./download.sh \
+		-b="$buildDir" \
+		--url="$url";
+		);
+	
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to download the latest version tar";
+	fi
+		
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--in-source \
+		--cmd-configure='Configure' \
+		--configure-options="\
+			-Dprefix=$prefix \
+			-des \
+		" \
+		--dest-dir="$destDir" \
+		--install-options="install-strip";
+}

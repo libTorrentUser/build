@@ -1,0 +1,71 @@
+#!/bin/sh
+
+source script.lib.sh
+
+source ../script/postbuild-python.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf 'python-setuptools';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	local npp="$4";
+	local dirBin="$5";
+
+	local package='meson';
+
+	local sourceDir;	
+	sourceDir=$(./latest.sh \
+		--host='github' \
+		--package="mesonbuild/${package}" \
+		-b="$buildDir");
+	
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+
+	DieIfFails cd "$sourceDir";
+
+	LogErr 'building...'
+	DieIfFails python setup.py build \
+		-j $npp;
+		
+	LogErr 'installing...'
+	DieIfFails python setup.py install \
+		--prefix=$prefix \
+		--optimize=2 \
+		--root="$destDir"
+}
+
+
+PackagePostBuild()
+{	
+	Log 'Post build...';
+		
+	local prefix="$1";
+	local destDir="$2";
+	local binDir="$3";
+	local envVarsFile="$4";
+
+	PostBuildPython \
+		'meson' \
+		"$prefix" \
+		"$destDir" \
+		"$binDir" \
+		"$envVarsFile";
+}
+

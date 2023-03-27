@@ -1,0 +1,19 @@
+--- facebook-zstd-c9c7be8/programs/Makefile
++++ patched/programs/Makefile
+@@ -128,6 +128,7 @@
+     ZSTD_ALL_SRC="$(ZSTD_ALL_SRC)"
+ 
+ 
++
+ .PHONY: all
+ all: zstd
+ 
+@@ -136,7 +137,7 @@
+ 
+ .PHONY: zstd  # must always be run
+ zstd : CPPFLAGS += $(THREAD_CPP) $(ZLIBCPP) $(LZMACPP) $(LZ4CPP)
+-zstd : LDFLAGS += $(THREAD_LD) $(DEBUGFLAGS_LD)
++zstd : LDFLAGS += -static $(THREAD_LD) $(DEBUGFLAGS_LD)
+ zstd : LDLIBS += $(ZLIBLD) $(LZMALD) $(LZ4LD)
+ zstd : CPPFLAGS += -DZSTD_LEGACY_SUPPORT=$(ZSTD_LEGACY_SUPPORT)
+ ifneq (,$(filter Windows%,$(OS)))

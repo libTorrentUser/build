@@ -1,0 +1,153 @@
+# enables auto-saving in coop games. They were disabled, for somereason. This
+# patch also creates the "sv_autosavetimestamp" cvar, which can be used to use
+# timestamps as the auto-saves name.
+--- fteqw-code-r6257-trunk/engine/server/savegame.c
++++ ferneu/engine/server/savegame.c
+@@ -5,20 +5,21 @@
+ #define CACHEGAME_VERSION_DEFAULT CACHEGAME_VERSION_VERBOSE
+ 
+ extern cvar_t skill;
+ extern cvar_t deathmatch;
+ extern cvar_t coop;
+ extern cvar_t teamplay;
+ extern cvar_t pr_enable_profiling;
+ 
+ cvar_t sv_savefmt = CVARFD("sv_savefmt", "", CVAR_SAVE, "Specifies the format used for the saved game.\n0=legacy.\n1=fte\n2=binary");
+ cvar_t sv_autosave = CVARFD("sv_autosave", "5", CVAR_SAVE, "Interval for autosaves, in minutes. Set to 0 to disable autosave.");
++cvar_t sv_autosavetimestamp = CVARFD("sv_autosavetimestamp", "0", CVAR_SAVE, "When set to 1, all auto-saved demos will be put inside a sub-directory called \"auto\" and the save names will be \"YYYYmmdd_HHMMSS-map\"");
+ extern cvar_t pr_ssqc_memsize;
+ 
+ void SV_Savegame_f (void);
+ 
+ 
+ typedef struct
+ {
+ 	char name[32];
+ 	union
+ 	{
+@@ -1494,62 +1495,49 @@
+ 	}
+ 	else
+ 		Con_Printf("%s: invalid number of arguments\n", Cmd_Argv(0));
+ }
+ 
+ void SV_AutoSave(void)
+ {
+ #ifndef NOBUILTINMENUS
+ #ifndef SERVERONLY
+ 	const char *autosavename;
+-	int i;
+ 	if (sv_autosave.value <= 0)
+ 		return;
+ 	if (sv.state != ss_active)
+ 		return;
+ 	switch(svs.gametype)
+ 	{
+ 	default:	//probably broken. don't ever try.
+ 		return;
+ 
+ 	case GT_Q1QVM:
+ 	case GT_PROGS:
+-		//don't bother to autosave multiplayer games.
+-		//this may be problematic with splitscreen, but coop rules tend to apply there anyway.
+-		if (sv.allocated_client_slots != 1)
+-			return;
+-
+-		for (i = 0; i < sv.allocated_client_slots; i++)
+-		{
+-			if (svs.clients[i].state == cs_spawned)
+-			{
+-				if (svs.clients[i].edict->v->health <= 0)
+-					return;	//autosaves with a dead player are just cruel.
+-
+-				if ((int)svs.clients[i].edict->v->flags & (FL_GODMODE | FL_NOTARGET))
+-					return;	//autosaves to highlight cheaters is also just spiteful.
+-
+-				if (svs.clients[i].edict->v->movetype != MOVETYPE_WALK)
+-					return;	//noclip|fly are cheaters, toss|bounce are bad at playing. etc.
+-
+-				if (!((int)svs.clients[i].edict->v->flags & FL_ONGROUND))
+-					return;	//autosaves while people are jumping are awkward.
+-
+-				if (svs.clients[i].edict->v->velocity[0] || svs.clients[i].edict->v->velocity[1] || svs.clients[i].edict->v->velocity[2])
+-					return;	//people running around are likely to result in poor saves
+-			}
+-		}
+ 		break;
+ 	}
+ 
+-	autosavename = M_ChooseAutoSave();
+-	Con_DPrintf("Autosaving to %s\n", autosavename);
++	char tsSaveName[128] = {0};
++	if(sv_autosavetimestamp.value == 1)
++	{
++		char timestamp[16];
++		time_t tm = time(NULL);
++		strftime(timestamp, sizeof(timestamp), "%Y%m%d_%H%M%S", localtime(&tm));
++		Q_snprintfz(tsSaveName, sizeof(tsSaveName), "auto/%s-%s", timestamp, svs.name);
++		autosavename = &tsSaveName[0];
++	}
++	else
++	{
++		autosavename = M_ChooseAutoSave();
++	}
++
++	Con_Printf("Autosaving to %s\n", autosavename);
+ 	SV_Savegame(autosavename, false);
+ 
+ 	sv.autosave_time = sv.time + sv_autosave.value * 60;
+ #endif
+ #endif
+ }
+ 
+ static void SV_SwapPlayers(client_t *a, client_t *b)
+ {
+ 	size_t i;
+--- fteqw-code-r6257-trunk/engine/server/server.h
++++ ferneu/engine/server/server.h
+@@ -1633,20 +1633,21 @@
+ 
+ // savegame.c
+ void SV_Savegame_f (void);
+ void SV_DeleteSavegame_f (void);
+ void SV_Savegame_c(int argn, const char *partial, struct xcommandargcompletioncb_s *ctx);
+ void SV_Loadgame_f (void);
+ qboolean SV_Loadgame (const char *unsafe_savename);
+ void SV_AutoSave(void);
+ void SV_FlushLevelCache(void);
+ extern cvar_t sv_autosave;
++extern cvar_t sv_autosavetimestamp;
+ extern cvar_t sv_savefmt;
+ 
+ 
+ int SV_RateForClient(client_t *cl);
+ 
+ void SVVC_Frame (qboolean enabled);
+ void SV_CalcPHS (void);
+ 
+ void SV_GetConsoleCommands (void);
+ void SV_CheckTimer(void);
+--- fteqw-code-r6257-trunk/engine/server/sv_main.c
++++ ferneu/engine/server/sv_main.c
+@@ -5750,20 +5750,21 @@
+ 	Cvar_Register (&sv_nailhack, cvargroup_servercontrol);
+ 	Cvar_Register (&sv_nopvs, cvargroup_servercontrol);
+ 
+ 	Cmd_AddCommand ("sv_impulse", SV_Impulse_f);
+ 
+ 	Cmd_AddCommand ("openroute", SV_OpenRoute_f);
+ 
+ #ifdef SAVEDGAMES
+ #if !defined(NOBUILTINMENUS) && !defined(SERVERONLY)
+ 	Cvar_Register(&sv_autosave, cvargroup_servercontrol);
++	Cvar_Register(&sv_autosavetimestamp, cvargroup_servercontrol);
+ #endif
+ 	Cvar_Register(&sv_savefmt, cvargroup_servercontrol);
+ #ifndef QUAKETC
+ 	Cmd_AddCommandAD ("savegame_legacy", SV_Savegame_f, SV_Savegame_c, "Saves the game in a format compatible with vanilla Quake. Anything not supported by that format will be lost.");
+ #endif
+ 	Cmd_AddCommandAD ("savegame", SV_Savegame_f, SV_Savegame_c, "Saves the game to the named location.");
+ 	Cmd_AddCommandAD ("loadgame", SV_Loadgame_f, SV_Savegame_c, "Loads an existing saved game.");
+ 	Cmd_AddCommandAD ("save", SV_Savegame_f, SV_Savegame_c, "Saves the game to the named location.");
+ 	Cmd_AddCommandAD ("load", SV_Loadgame_f, SV_Savegame_c, "Loads an existing saved game.");
+ 	Cmd_AddCommandAD ("unsavegame", SV_DeleteSavegame_f, SV_Savegame_c, "Wipes an existing saved game from disk.");

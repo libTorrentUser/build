@@ -1,0 +1,61 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+alsa-lib
+cairo
+eudev
+gtksourceview3
+libao
+libxrandr
+libxv
+make
+openal-soft
+sdl2
+';
+
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+
+	local package='bsnes';
+
+	local sourceDir;	
+	sourceDir=$(./latest.sh \
+		--host='githup' \
+		--package="bsnes-emu/${package}" \
+		-b="$buildDir");
+	
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+	
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--in-source \
+		--no-configure \
+		--build-options="
+			-C bsnes \
+			lto=true \
+		" \
+		--dest-dir="$destDir";
+}

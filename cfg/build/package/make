@@ -1,0 +1,95 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	return 0;
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix=${2:+"--prefix=$2"};
+	local destDir=${3:+"--dest-dir=$3"};
+
+	local package='make';
+
+	# avoid declaring the variable and assigning to it in the same line because
+	# shell script sucks, I mean, because it can mask errors. $? will always
+	# report success if you do it on the same line.
+	local sourceDir;
+	sourceDir=$(./latest.sh --host='gnu' --package="$package" -b="$buildDir");
+	
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+
+	# we assume there is no 'make' in the system. Because of that, we have to
+	# jump through some hoops in order to build 'make' itself.
+	#
+	# --disable-dependency-tracking
+	# we pass this flag when configuring, otherwise make would attempt to call 
+	# make and fail because there is no make in the system.
+	#
+	# --cmd-build="${sourceDir}/build.sh
+	# fortunately make devs thought about systems without make and provided this
+	# script. We have to use it, instead of make itself, to compile make.
+	# NOTE: as of make 4-4, the build.sh script was changed and started 
+	# validating paramters passed to it. And since our make.sh script always
+	# passes -C and -j, the call to build.sh stopped working. -j is meaningless
+	# to build.sh and -C should be passed as OUTDIR
+	
+	#
+	# --cmd-install="${buildDir}/obj/make"
+	# and finally, we have to use the newly compiled make to install make.
+
+	Log 'Configuring...';
+	local objDir="${buildDir}/obj";
+	DieIfFails mkdir -p "$objDir";
+	DieIfFails DeleteAllFiles "$objDir";
+	DieIfFails cd "$objDir";
+	DieIfFails "${sourceDir}/configure" \
+		--disable-nls \
+		--disable-dependency-tracking \
+		$prefix;
+
+
+	Log 'Building...';
+	OUTDIR="$objDir" DieIfFails "${sourceDir}/build.sh";
+
+
+	# although make 4-4 can no longer be built using our make script, we can 
+	# still use our make.sh script to perform the install
+	DieIfFails cd -;
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--no-configure \
+		--no-build \
+		--cmd-install="${buildDir}/obj/make" \
+		$destDir \
+		--install-options="install-strip";
+	
+	
+#	DieIfFails ./make.sh \
+#		-b="$buildDir" \
+#		-s="$sourceDir" \
+#		--configure-options="\
+#			--disable-nls \
+#			--disable-dependency-tracking \
+#			$prefix" \
+#		--cmd-build="${sourceDir}/build.sh" \
+#		--cmd-install="${buildDir}/obj/make" \
+#		$destDir \
+#		--install-options="install-strip";	
+}

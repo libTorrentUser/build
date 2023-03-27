@@ -1,0 +1,42 @@
+#!/bin/sh
+
+source script.lib.sh
+
+source ../script/build-xorg-lib.sh
+
+
+PackageBuildDependencies()
+{
+	printf '
+make
+pkgconf
+python
+libxau
+xcb-proto
+';
+
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	local npp="$4";
+	local dirBin="$5";
+	
+	BuildXOrgLib \
+		'libxcb' \
+		"$buildDir" \
+		"$prefix" \
+		"$destDir" \
+		"$npp" \
+		"$dirBin";
+}

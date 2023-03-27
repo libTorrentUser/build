@@ -1,0 +1,75 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+alsa-lib
+gnutls
+libjpeg-turbo
+libpng
+libvorbis
+make
+mesa
+opus
+speex
+speexdsp
+xcursor
+xrandr
+';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+
+	local package='fteqw';
+
+	local sourceDir;	
+	sourceDir=$(./latest.sh \
+		--host='sourceforge-snapshot' \
+		--package="${package}" \
+		-b="$buildDir");
+		
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version source code";
+	fi
+
+	Log 'patching...';	
+	for p in "../patch/${package}/"*; do
+		p=$(readlink -f "$p");
+		printf 'applying patch %s\n' "$p";
+		DieIfFails patch -p1 -i "$p" -d "$sourceDir";
+	done;
+
+
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir/engine" \
+		--no-configure \
+		--in-source \
+		--build-options='gl-rel' \
+		--no-install;
+
+	Log 'installing...';
+	local finalDir="${destDir}${prefix}/bin/";
+
+	DieIfFails mkdir -p "$finalDir";
+
+	# ensure the dir is empty
+	DieIfFails DeleteAllFiles "$finalDir";
+	
+	DieIfFails cp "${sourceDir}/engine/release/fteqw-gl" "$finalDir"
+}

@@ -1,0 +1,14 @@
+--- e2fsprogs-1.46.5/misc/Makefile.in
++++ patched/misc/Makefile.in
+@@ -340,6 +340,11 @@
+ 	$(Q) $(CC) $(ALL_LDFLAGS) -g -pg -o uuidd.profiled $(PROFILED_UUIDD_OBJS) \
+ 		$(PROFILED_LIBUUID) $(LIBINTL) $(SYSLIBS)
+ 
++uuidd.static: $(UUIDD_OBJS) $(DEPLIBUUID)
++	$(E) "	LD $@"
++	$(Q) $(CC) $(ALL_LDFLAGS) -o uuidd.static $(UUIDD_OBJS) $(LIBUUID) \
++		$(LIBINTL) $(SYSLIBS)
++
+ dumpe2fs: $(DUMPE2FS_OBJS) $(DEPLIBS) $(DEPLIBS_E2P) $(DEPLIBUUID) $(DEPLIBBLKID)
+ 	$(E) "	LD $@"
+ 	$(Q) $(CC) $(ALL_LDFLAGS) -o dumpe2fs $(DUMPE2FS_OBJS) $(LIBS) \

@@ -1,0 +1,89 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+
+
+PackageBuildDependencies()
+{
+	printf "\
+make
+";
+
+}
+
+
+PackageRuntimeDependencies()
+{
+return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	local dirBin="$5";
+
+	local package='speex';
+
+	local baseURL='https://downloads.us.xiph.org/releases/speex';
+	local content=$(Download "${baseURL}/");
+
+	# get the latest tar. We cannot use the latest.sh script to retrieve it
+	# because there is a bunch of similarly named packages in the same dir and
+	# the script will select the wrong one
+	local tarName=;
+	for ext in gz zx bz; do
+		tarName=$( \
+			printf '%s' "$content" | \
+			grep -o "${package}"'-[^"]*\.'"$ext" | \
+			grep -v 'xmms' | \
+			grep -v 'beta' | \
+			grep -v 'rc' | \
+			sort -V | \
+			tail -n 1
+			);
+
+		if [ ! -z "$tarName" ]; then
+			break;
+		fi;
+	done
+
+	if [ $? -ne 0  ] || [ -z "$tarName" ]; then
+		Die "unable to retrieve the latest version url";
+	fi	
+
+	local url="${baseURL}/${tarName}";
+	printf 'tarname: %s\nlatest version url:\n%s\n' "$tarName" "$url";
+
+	local sourceDir=;
+	sourceDir=$(./download.sh \
+		-b="$buildDir" \
+		--url="$url";
+		);
+
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to download the latest version tar";
+	fi
+		
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--configure-options=" \
+			--enable-option-checking=fatal \
+			--prefix=$prefix \
+			--disable-fixed-point-debug \
+			--disable-valgrind" \
+		--dest-dir="$destDir" \
+		--install-options="install-strip";
+
+	DieIfFails ./adjust-pkgconfig.sh \
+		-p="$package" \
+		-d="$destDir" \
+		--prefix="$prefix" \
+		-o="${dirBin}/pkgconfig";
+}

@@ -1,0 +1,89 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+PackageBuildDependencies()
+{
+	printf 'make';
+
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir=${3:+--dest-dir="$3"};
+
+	local package='nasm';
+
+	local content=$(Download 'https://www.nasm.us');
+	local dirURL=;
+	dirURL=$( \
+		printf '%s' "$content" | \
+		grep -o 'http://.*/releasebuilds/[^\?][^"]*'
+		);
+
+	if [ $? -ne 0  ] || [ -z "$dirURL" ]; then
+		Die "unable to retrieve the latest version directory url";
+	fi	
+	
+
+	# get the latest tar. We cannot use the latest.sh script to retrieve it
+	# because there is a bunch of similarly named packages in the same dir and
+	# the script will select the wrong one
+	content=$(Download "$dirURL");
+	
+	local tarName=;
+	for ext in xz gz bz2 ; do
+		tarName=$( \
+			printf '%s' "$content" | \
+			grep -o "${package}"'-[^"]*\.'"$ext" | \
+			grep -v 'xdoc' | \
+			sort -V | \
+			tail -n 1
+			);
+
+		if [ ! -z "$tarName" ]; then
+			break;
+		fi;
+	done
+
+	if [ $? -ne 0  ] || [ -z "$tarName" ]; then
+		Die "unable to retrieve the latest version url";
+	fi	
+
+	local url="${dirURL}${tarName}";
+	printf 'tarname: %s\nlatest version url:\n%s\n' "$tarName" "$url";
+
+	local sourceDir=;
+	sourceDir=$(./download.sh \
+		-b="$buildDir" \
+		--url="$url";
+		);
+
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to download the latest version tar";
+	fi
+
+		
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--configure-options=" \
+			--enable-option-checking=fatal \
+			--prefix=$prefix \
+			--enable-optimization=yes \
+			--disable-gdb \
+			--disable-profiling \
+			--enable-lto=yes" \
+		$destDir \
+		--install-options="install";
+}

@@ -1,0 +1,71 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+fontconfig
+freetype2
+meson
+ninja
+';
+
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+
+	local package='harfbuzz';
+
+	local sourceDir=$(./latest.sh \
+		-b="$buildDir" \
+		--package="$package/$package" \
+		--host='github'
+		);
+
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+
+		
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--cmd-configure='meson' \
+		--configure-options="\
+			--prefix=$prefix \
+			--default-library=both \
+			-D buildtype=release \
+			-D b_lto=true \
+			-D tests=disabled \
+			-D introspection=disabled \
+			-D docs=disabled \
+			-D benchmark=disabled \
+			" \
+		--cmd-build='meson compile' \
+		--dest-dir="$destDir" \
+		--cmd-install='meson' \
+		--install-options="install";
+
+	local pkgconfigDir="$dirBin/pkgconfig";
+	
+	DieIfFails ./adjust-pkgconfig.sh \
+		-d="$destDir" \
+		--prefix="$prefix" \
+		-o="$pkgconfigDir";
+}

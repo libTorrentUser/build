@@ -1,0 +1,33 @@
+#!/bin/sh
+
+source script.lib.sh
+
+source ../script/build-gnu.sh
+
+
+PackageBuildDependencies()
+{
+	printf 'make';
+}
+
+
+PackagePostBuild()
+{	
+	local prefix="$1";
+	local destDir="$2";
+	local binDir="$3";
+
+	# edit the paths in libtoolize and put it in our bin dir, so other packages
+	# can use one that will search for stuff inside our work dir
+	for a in libtoolize; do
+		local destFile="${binDir}/${a}";
+		DieIfFails sed "s;dir=\"$prefix;dir=\"${destDir}${prefix};" "${destDir}${prefix}/bin/${a}" > "$destFile";
+		DieIfFails chmod +x "$destFile";
+	done
+}
+
+
+PackageBuild()
+{
+	BuildGNU 'libtool' "$1" "$2" "$3";	
+}

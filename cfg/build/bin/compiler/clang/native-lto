@@ -1,0 +1,20 @@
+#!/bin/sh
+
+# -g0
+#     disable any sort of debug info (-g0 negates -g)
+#
+# -march=native
+#     allow the use all instructions sets available in the host CPU
+#
+# -mtune=native
+#     tune the code to the host CPU
+#
+# -flto=auto
+#     try to comunicate with make jobserver to determine how many threads can be
+#     used when performing link-time optimization. If that fails, use one thread
+#     for each processor in the machine.
+#     
+# note: you add the flag "-frecord-gcc-switches" and then use 
+# "readelf -p '.GCC.command.line' someExec" in order to see if these flags were
+# really used
+/usr/bin/clang "$@" -g0 -march=native -mtune=native -flto=auto -fuse-ld=lld

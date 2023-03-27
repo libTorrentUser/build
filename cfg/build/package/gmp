@@ -1,0 +1,39 @@
+#!/bin/sh
+
+source script.lib.sh
+
+source ../script/build-gnu.sh
+
+
+PackageBuildDependencies()
+{
+	printf 'm4 make';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+
+	local package='gmp';
+
+	BuildGNU "$package" "$buildDir" "$prefix" "$destDir";
+
+	local pkgconfigDir="$dirBin/pkgconfig";
+	
+	DieIfFails ./adjust-pkgconfig.sh \
+		-p="$package" \
+		-d="$destDir" \
+		--prefix="$prefix" \
+		-o="$pkgconfigDir";
+}

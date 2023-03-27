@@ -1,0 +1,7 @@
+#!/bin/sh
+
+# note: this is the classic GNU linker (ld). On many systems, it is just a hard
+# link to it (check the inode number). I'm using this instead of just ld in 
+# order to avoid ld being replaced by a shortcut to something else, which is not
+# uncommon
+/usr/bin/ld.bfd "$@"

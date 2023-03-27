@@ -1,0 +1,48 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf "\
+make
+gperf";
+
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir=${3:+--dest-dir="$3"};
+
+	local package='eudev';
+
+	local sourceDir=$(./latest.sh \
+		-b="$buildDir" \
+		--package="eudev-project/$package" \
+		--host='github'
+		);
+
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+
+		
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--configure-options=" \
+			--prefix=$prefix" \
+		$destDir \
+		--install-options="install-strip";
+}

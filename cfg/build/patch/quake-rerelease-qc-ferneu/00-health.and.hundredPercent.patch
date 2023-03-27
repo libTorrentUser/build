@@ -1,0 +1,684 @@
+--- /dev/null
++++ ferneu/ferneu/ferneu_defs.qc
+@@ -0,0 +1,3 @@
++// used to avoid spamming thousands of messages while the player is trying to
++// exit a level without killing and finding everything
++.float ferneu_hundredPercent_finished;
+--- /dev/null
++++ ferneu/ferneu/ferneu_lib.qc
+@@ -0,0 +1,72 @@
++float Ferneu_Health()
++{
++	if (skill == 3 && !deathmatch)
++	{
++		local float health = cvar("ferneu_health");
++		
++		if(health > 0)
++		{
++			return health;
++		}
++
++		// this is the default in the 2021 Steam re-release
++		return 50;
++	}
++
++	return 100;
++}
++
++
++
++void HundredPercent_Print(entity client, string s, float p0)
++{
++	if (time >= client.ferneu_hundredPercent_finished)
++	{
++		client.ferneu_hundredPercent_finished = time + 5;
++		centerprint(client, s, ftos(p0));
++		sound (client, CHAN_AUTO, "misc/talk.wav", 1, ATTN_NORM);
++	}
++}
++
++
++float HundredPercent_GetTotalMonsters(void)
++{
++	if (mapname != "e1m7")
++	{
++		return total_monsters;
++	}
++
++	return 1;
++}
++
++
++// if the cvar "ferneu_hundredPercent" is not zero, returns true if the player
++// has found all secrets and kill all monsters.
++float Ferneu_HundredPercent(entity client)
++{	
++	if (cvar("ferneu_hundredPercent") != 0)
++	{
++		if (found_secrets < total_secrets)
++		{
++			HundredPercent_Print(
++				client, 
++				"Find all secrets!\n{} to go", 
++				total_secrets - found_secrets);
++				
++			return FALSE;
++		}
++
++		local float totalMonsters = HundredPercent_GetTotalMonsters();
++		if (killed_monsters < totalMonsters)
++		{		
++			HundredPercent_Print(
++				client, 
++				"Kill all monsters!\n{} to go", 
++				totalMonsters - killed_monsters);
++				
++			return FALSE;
++		}
++	}
++
++	return TRUE;
++}
+--- quake-rerelease-qc-main/quakec/client.qc
++++ ferneu/quakec/client.qc
+@@ -17,20 +17,22 @@
+     See file, 'COPYING', for details.
+ */
+ 
+ // prototypes
+ void () W_WeaponFrame;
+ void() W_SetCurrentAmmo;
+ void(entity attacker, float damage) player_pain;
+ void() player_stand1;
+ void (vector org) spawn_tfog;
+ void (vector org, entity death_owner) spawn_tdeath;
++float Ferneu_Health(void);
++float Ferneu_HundredPercent(entity client);
+ 
+ float	modelindex_eyes, modelindex_player;
+ 
+ /*
+ =============================================================================
+ 
+ 				LEVEL CHANGING / INTERMISSION
+ 
+ =============================================================================
+ */
+@@ -86,24 +88,21 @@
+ 	parm5 = self.ammo_nails;
+ 	parm6 = self.ammo_rockets;
+ 	parm7 = self.ammo_cells;
+ 	parm8 = self.weapon;
+ 	parm9 = self.armortype * 100;
+ };
+ 
+ void() SetNewParms =
+ {
+ 	parm1 = IT_SHOTGUN | IT_AXE;
+-	if (skill == 3 && !deathmatch)
+-		parm2 = 50;
+-	else
+-		parm2 = 100;
++	parm2 = Ferneu_Health();
+ 	parm3 = 0;
+ 	parm4 = 25;
+ 	parm5 = 0;
+ 	parm6 = 0;
+ 	parm7 = 0;
+ 	parm8 = 1;
+ 	parm9 = 0;
+ };
+ 
+ void() DecodeLevelParms =
+@@ -393,20 +392,25 @@
+ {
+ 	if (other.classname != "player")
+ 		return;
+ 
+ 	if ((cvar("noexit") == 1) || ((cvar("noexit") == 2) && (mapname != "start")))
+ 	{
+ 		T_Damage (other, self, self, 50000);
+ 		return;
+ 	}
+ 
++	if (!Ferneu_HundredPercent(other))
++	{
++		return;
++	}
++
+ 	if (coop || deathmatch)
+ 	{
+ 		bprint("$qc_exited", other.netname);
+ 
+ 	}
+ 	
+ 	nextmap = self.map;
+ 
+ 	SUB_UseTargets ();
+ 
+@@ -695,44 +699,39 @@
+ */
+ void() DecodeLevelParms;
+ void() PlayerDie;
+ 
+ 
+ void() PutClientInServer =
+ {
+ 	local	entity spot;
+ 
+ 	self.classname = "player";
+-	if (skill == 3 && !deathmatch)
+-		self.health = 50;
+-	else
+-		self.health = 100;
++	self.health = Ferneu_Health();
+ 	self.takedamage = DAMAGE_AIM;
+ 	self.solid = SOLID_SLIDEBOX;
+ 	self.movetype = MOVETYPE_WALK;
+-	self.show_hostile = 0;
+-	if (skill == 3 && !deathmatch)
+-		self.max_health = 50;
+-	else
+-		self.max_health = 100;
++	self.show_hostile = 0;	
++	self.max_health = Ferneu_Health();
+ 	self.flags = FL_CLIENT;
+ 	self.air_finished = time + 12;
+ 	self.dmg = 2;   		// initial water damage
+ 	self.super_damage_finished = 0;
+ 	self.radsuit_finished = 0;
+ 	self.invisible_finished = 0;
+ 	self.invincible_finished = 0;
+ 	self.effects = 0;
+ 	self.invincible_time = 0;
+ 	self.healthrot_nextcheck = 0;
+ 	self.fired_weapon = 0; // [NDS] haleyjd
+ 	self.took_damage = 0;  // [NDS] haleyjd
++	self.ferneu_hundredPercent_finished = 0;
+ 	
+ 	if ( coop ) { 
+ 		self.team = TEAM_HUMANS;
+ 	}
+ 
+ 	DecodeLevelParms ();
+ 	
+ 	W_SetCurrentAmmo ();
+ 
+ 	self.attack_finished = time;
+--- quake-rerelease-qc-main/quakec/progs.src
++++ ferneu/quakec/progs.src
+@@ -1,13 +1,16 @@
+ ../progs.dat
+ 
+ defs.qc
++
++../ferneu/ferneu_defs.qc
++
+ subs.qc
+ fight.qc
+ ai.qc
+ combat.qc
+ itemnames.qc
+ items.qc
+ weapons.qc
+ world.qc
+ client.qc
+ player.qc
+@@ -29,10 +32,12 @@
+ monsters/chthon.qc
+ 
+ monsters/spawn.qc		// registered
+ monsters/hellknight.qc	// registered
+ monsters/rotfish.qc		// registered
+ monsters/vore.qc		// registered
+ monsters/enforcer.qc	// registered
+ monsters/shub.qc		// registered
+ 
+ bots/bot.qc				// bot support
++
++../ferneu/ferneu_lib.qc
+--- quake-rerelease-qc-main/quakec_hipnotic/client.qc
++++ ferneu/quakec_hipnotic/client.qc
+@@ -18,20 +18,22 @@
+ */
+ 
+ 
+ // prototypes
+ void () W_WeaponFrame;
+ void() W_SetCurrentAmmo;
+ void() player_pain;
+ void() player_stand1;
+ void (vector org) spawn_tfog;
+ void (vector org, entity death_owner) spawn_tdeath;
++float Ferneu_Health(void);
++float Ferneu_HundredPercent(entity client);
+ 
+ float modelindex_eyes, modelindex_player, modelindex_hammer;
+ 
+ 
+ /*
+ =============================================================================
+ 
+ 				LEVEL CHANGING / INTERMISSION
+ 
+ =============================================================================
+@@ -83,24 +85,21 @@
+ 	parm5 = self.ammo_nails;
+ 	parm6 = self.ammo_rockets;
+ 	parm7 = self.ammo_cells;
+ 	parm8 = self.weapon;
+ 	parm9 = self.armortype * 100;
+ };
+ 
+ void() SetNewParms =
+ {
+ 	parm1 = IT_SHOTGUN | IT_AXE;
+-	if (skill == 3 && !deathmatch)
+-		parm2 = 50;
+-	else
+-		parm2 = 100;
++	parm2 = Ferneu_Health();
+ 	parm3 = 0;
+ 	parm4 = 25;
+ 	parm5 = 0;
+ 	parm6 = 0;
+ 	parm7 = 0;
+ 	parm8 = 1;
+ 	parm9 = 0;
+ };
+ 
+ void() DecodeLevelParms =
+@@ -513,20 +512,25 @@
+ 
+ 	if (other.classname != "player")
+ 		return;
+ 
+    if ((cvar("noexit") == 1) || ((cvar("noexit") == 2) && (mapname != "start")))
+ 	{
+ 		T_Damage (other, self, self, 50000);
+ 		return;
+ 	}
+ 
++	if (!Ferneu_HundredPercent(other))
++	{
++		return;
++	}
++
+    if (coop || deathmatch)
+ 	{
+ 		bprint("$qc_exited", other.netname);
+ 
+ 	}
+ 
+ 	nextmap = self.map;
+ 
+ 	SUB_UseTargets ();
+ 
+@@ -801,33 +805,27 @@
+ void() DecodeLevelParms;
+ void() PlayerDie;
+ 
+ 
+ void() PutClientInServer =
+ {
+ 	local	entity spot;
+ 
+    spot = SelectSpawnPoint ();
+ 
+-   self.classname = "player";
+-	if (skill == 3 && !deathmatch)
+-		self.health = 50;
+-	else
+-		self.health = 100;
++	self.classname = "player";
++	self.health = Ferneu_Health();
+ 	self.takedamage = DAMAGE_AIM;
+ 	self.solid = SOLID_SLIDEBOX;
+ 	self.movetype = MOVETYPE_WALK;
+ 	self.show_hostile = 0;
+-	if (skill == 3 && !deathmatch)
+-		self.max_health = 50;
+-	else
+-		self.max_health = 100;
++	self.max_health = Ferneu_Health();
+ 	self.flags = FL_CLIENT;
+ 	self.air_finished = time + 12;
+ 	self.dmg = 2;   		// initial water damage
+ 	self.super_damage_finished = 0;
+ 	self.radsuit_finished = 0;
+ 	self.invisible_finished = 0;
+ 	self.invincible_finished = 0;
+ 	self.effects = 0;
+ 	self.invincible_time = 0;
+ 	//JIM
+--- quake-rerelease-qc-main/quakec_hipnotic/progs.src
++++ ferneu/quakec_hipnotic/progs.src
+@@ -1,14 +1,17 @@
+ ../progs.dat
+ 
+ defs.qc
+ hipdefs.qc   //JIM
++
++../ferneu/ferneu_defs.qc
++
+ subs.qc
+ fight.qc
+ ai.qc
+ combat.qc
+ items.qc
+ weapons.qc
+ world.qc
+ client.qc
+ player.qc
+ monsters.qc
+@@ -55,10 +58,11 @@
+ hipscrge.qc
+ hipholes.qc
+ hipclock.qc
+ hiptrig.qc
+ hipmisc.qc
+ hipwater.qc
+ hipdecoy.qc
+ 
+ bots/bot.qc				// bot support
+ 
++../ferneu/ferneu_lib.qc
+--- quake-rerelease-qc-main/quakec_mg1/client.qc
++++ ferneu/quakec_mg1/client.qc
+@@ -21,20 +21,22 @@
+ void() GibMonster;
+ float() HordeGetPlayersAlive;
+ 
+ // prototypes
+ void () W_WeaponFrame;
+ void() W_SetCurrentAmmo;
+ void(entity attacker, float damage) player_pain;
+ void() player_stand1;
+ void (vector org) spawn_tfog;
+ void (vector org, entity death_owner) spawn_tdeath;
++float Ferneu_Health(void);
++float Ferneu_HundredPercent(entity client);
+ 
+ float	modelindex_eyes, modelindex_player;
+ 
+ const float NO_INTERMISSION = 1;
+ 
+ /*
+ =============================================================================
+ 
+ 				LEVEL CHANGING / INTERMISSION
+ 
+@@ -110,24 +112,21 @@
+ 	parm5 = self.ammo_nails;
+ 	parm6 = self.ammo_rockets;
+ 	parm7 = self.ammo_cells;
+ 	parm8 = self.weapon;
+ 	parm9 = self.armortype * 100;
+ };
+ 
+ void() SetNewParms =
+ {
+ 	parm1 = IT_SHOTGUN | IT_AXE;
+-	if (skill == 3 && !deathmatch)
+-		parm2 = 50;
+-	else
+-		parm2 = 100;
++	parm2 = Ferneu_Health();	
+ 	parm3 = 0;
+ 	parm4 = 25;
+ 	parm5 = 0;
+ 	parm6 = 0;
+ 	parm7 = 0;
+ 	parm8 = 1;
+ 	parm9 = 0;
+ };
+ 
+ void() DecodeLevelParms =
+@@ -469,20 +468,25 @@
+ {
+ 	if (other.classname != "player")
+ 		return;
+ 
+ 	if ((cvar("noexit") == 1) || ((cvar("noexit") == 2) && (mapname != "start")))
+ 	{
+ 		T_Damage (other, self, self, 50000);
+ 		return;
+ 	}
+ 
++	if (!Ferneu_HundredPercent(other))
++	{
++		return;
++	}
++
+ 	if (coop || deathmatch)
+ 	{
+ 		bprint("$qc_exited", other.netname);
+ 	}
+ 	
+ 	nextmap = self.map;
+ 	intermissiontext = self.endtext;
+ 
+ 	if(world.model == "maps/mgend.bsp")
+ 	{
+@@ -901,32 +905,26 @@
+ 	}
+ 
+ 	remove(oself);
+ }
+ 
+ void() PutClientInServer =
+ {
+ 	local	entity spot;
+ 
+ 	self.classname = "player";
+-	if (skill == 3 && !deathmatch)
+-		self.health = 50;
+-	else
+-		self.health = 100;
++	self.health = Ferneu_Health();
+ 	self.takedamage = DAMAGE_AIM;
+ 	self.solid = SOLID_SLIDEBOX;
+ 	self.movetype = MOVETYPE_WALK;
+ 	self.show_hostile = 0;
+-	if (skill == 3 && !deathmatch)
+-		self.max_health = 50;
+-	else
+-		self.max_health = 100;
++	self.max_health = Ferneu_Health();
+ 	self.flags = FL_CLIENT;
+ 	self.air_finished = time + 12;
+ 	self.dmg = 2;   		// initial water damage
+ 	self.super_damage_finished = 0;
+ 	self.radsuit_finished = 0;
+ 	self.invisible_finished = 0;
+ 	self.invincible_finished = 0;
+ 	self.effects = 0;
+ 	self.invincible_time = 0;
+ 	
+--- quake-rerelease-qc-main/quakec_mg1/progs.src
++++ ferneu/quakec_mg1/progs.src
+@@ -16,20 +16,23 @@
+ 
+ // Enables experimental coop respawn behaviour: keep all the players weapons when a checkpoint is activated
+ #define COOP_RESPAWN_KEEP_WEAPONS
+ 
+ // Makes it so that killing an entity that has a delayed trigger behaviour while the delay is pending also cancels the delayed trigger
+ #define ALLOW_DELAYED_THINK_CANCEL
+ 
+ #includelist
+ 
+ defs.qc
++
++../ferneu/ferneu_defs.qc
++
+ math.qc
+ subs.qc
+ frametick.qc
+ fight.qc
+ ai.qc
+ combat.qc
+ items.qc
+ items_runes.qc
+ weapons.qc
+ fog.qc // Fog controls
+@@ -68,11 +71,13 @@
+ 
+ misc_corpses.qc //Corpses yay
+ misc_fx.qc // adds screenshake
+ 
+ //Map specific code? Why not..
+ map_specific/mge2m2.qc
+ map_specific/hub.qc
+ 
+ horde.qc // Yoder readded Sept 24, 2021
+ 
+-#endlist
+\ No newline at end of file
++../ferneu/ferneu_lib.qc
++
++#endlist
+--- quake-rerelease-qc-main/quakec_rogue/client.qc
++++ ferneu/quakec_rogue/client.qc
+@@ -22,20 +22,23 @@
+ // prototypes
+ void () W_WeaponFrame;
+ void() W_SetCurrentAmmo;
+ void() player_pain;
+ void() player_stand1;
+ void (vector org) spawn_tfog;
+ void (vector org, entity death_owner) spawn_tdeath;
+ 
+ void(entity targ, entity attacker) dmatch_score;
+ 
++float Ferneu_Health(void);
++float Ferneu_HundredPercent(entity client);
++
+ float	modelindex_eyes, modelindex_player;
+ 
+ /*
+ =============================================================================
+ 
+ 				LEVEL CHANGING / INTERMISSION
+ 
+ =============================================================================
+ */
+ 
+@@ -110,24 +113,21 @@
+ 		parm10 = IT2_ARMOR1;
+ 		parm3 = 50;
+ 		parm9 = 30;
+ 	} else {
+ 		parm1 = IT_SHOTGUN | IT_AXE;
+ 		parm3 = 0;
+ 		parm9 = 0;
+ 		parm10 = 0;
+ 	}
+ //--ZOID
+-	if (skill == 3 && !deathmatch)
+-		parm2 = 50;
+-	else
+-		parm2 = 100;
++	parm2 = Ferneu_Health();	
+ 	parm4 = 25;
+ 	parm5 = 0;
+ 	parm6 = 0;
+ 	parm7 = 0;
+ 	parm8 = 1;
+ 	parm11 = 0;
+ 	parm12 = 0;
+ 	parm13 = 0;
+ //ZOID--
+ 	parm14 = -1; 		// CTF: reset current team selection
+@@ -405,20 +405,25 @@
+ 
+ 	if (other.classname != "player")
+ 		return;
+ 
+ 	if ((cvar("noexit") == 1) || ((cvar("noexit") == 2) && (mapname != "start")))
+ 	{
+ 		T_Damage (other, self, self, 50000);
+ 		return;
+ 	}
+ 
++	if (!Ferneu_HundredPercent(other))
++	{
++		return;
++	}
++
+ 	if (coop || deathmatch)
+ 	{
+ 		bprint("$qc_exited", other.netname);
+ 
+ 	}
+ 	
+ 	nextmap = self.map;
+ 
+ 	SUB_UseTargets ();
+ 
+@@ -830,32 +835,26 @@
+ void() DecodeLevelParms;
+ void() PlayerDie;
+ 
+ void() player_touch;
+ 
+ void() PutClientInServer =
+ {
+ 	local	entity spot;
+ 
+ 	self.classname = "player";
+-	if (skill == 3 && !deathmatch)
+-		self.health = 50;
+-	else
+-		self.health = 100;
++	self.health = Ferneu_Health();	
+ 	self.takedamage = DAMAGE_AIM;
+ 	self.solid = SOLID_SLIDEBOX;
+ 	self.movetype = MOVETYPE_WALK;
+ 	self.show_hostile = 0;
+-	if (skill == 3 && !deathmatch)
+-		self.max_health = 50;
+-	else
+-		self.max_health = 100;
++	self.max_health = Ferneu_Health();	
+ 	self.flags = FL_CLIENT;
+ 	self.air_finished = time + 12;
+ 	self.dmg = 2;   		// initial water damage
+ 	self.super_damage_finished = 0;
+ 	self.radsuit_finished = 0;
+ 	self.invisible_finished = 0;
+ 	self.invincible_finished = 0;
+ 	self.effects = 0;
+ 	self.invincible_time = 0;
+ 
+--- quake-rerelease-qc-main/quakec_rogue/progs.src
++++ ferneu/quakec_rogue/progs.src
+@@ -1,13 +1,16 @@
+ progs.dat
+ 
+ defs.qc
++
++../ferneu/ferneu_defs.qc
++
+ teamplay.qc		// ZOID - teamplay stuff
+ runes.qc
+ motd.qc
+ subs.qc
+ fight.qc
+ ai.qc
+ combat.qc
+ items.qc
+ grapple.qc		// ZOID - grappling hook
+ weapons.qc
+@@ -59,10 +62,12 @@
+ sphere.qc
+ buzzsaw.qc
+ dmatch.qc
+ morph.qc
+ 
+ ending.qc
+ mummy.qc
+ timemach.qc
+ 
+ bots/bot.qc				// bot support
++
++../ferneu/ferneu_lib.qc

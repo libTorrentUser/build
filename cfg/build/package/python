@@ -1,0 +1,221 @@
+#!/bin/sh
+
+source script.lib.sh
+
+source ../script/postbuild-python.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+make
+zlib';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackagePostBuild()
+{			
+	local prefix="$1";
+	local destDir="$2";
+	local binDir="$3";
+	local envVarsFile="$4";
+
+	PostBuildPython \
+		'python' \
+		"$prefix" \
+		"$destDir" \
+		"$binDir" \
+		"$envVarsFile";
+}
+
+
+PackageWarnings()
+{
+	printf 'Python v10.x configuration script is broken and will fail if LTO is enabled';
+}
+
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	local npp="$4";
+	local dirBin="$5";
+
+	local package='python';
+
+	# save the current dir. It should be the dir where the helper scripts are
+	# and we will need it later
+	local helperScriptDir=;
+	helperScriptDir="$(pwd)";
+	if [ $? -ne 0  ]; then
+		Die "unable to retrieve the current directory";
+	fi
+
+	local content=$(Download 'https://www.python.org/downloads/source/');
+	
+	local url=$( \
+		printf '%s' "$content" | \
+		grep 'compressed source' | \
+		head -n 1 | \
+		sed 's;.*"\([^"]*\)".*;\1;');
+
+	if [ -z "$url" ]; then
+		Die 'Unable to locate latest '"$package"' source code url';
+	fi;
+
+	local sourceDir=;
+	sourceDir=$(./download.sh \
+		-b="$buildDir" \
+		--url="$url";
+		);
+
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to download the latest version tar";
+	fi
+
+
+	# Python v10.x configuration script is broken. It uses a crazy macro to
+	# detect float point words endianess and that macro fails badly depending
+	# on the compiler/flags used. GCC with -flto is enough to break it. It 
+	# breaks also because what ax_c_float_words_bigendian.m4 does is clearly 
+	# bound to fail.
+	#
+	# A work around is to not pass the -flto flag during the configuration step
+	# and in order to do that we must tell it to not use that special gcc script
+	# file we put inside "$dirBin/"
+	#
+	# That also means that we cannot use our ./make.sh script to configure and
+	# build the package, because we do want to use our special gcc script to
+	# when it is time to actualy build Python.
+	#
+	# Another workaround is to manualy set the variable 
+	# ax_cv_c_float_words_bigendian to "no" or "yes" and pass it to the 
+	# configure script. We are not doing it, but in case you decide to do it
+	# in the future, just do it like this
+	# 
+	# ./configure --prefix=/usr ax_cv_c_float_words_bigendian=no ...
+
+	# print the env vars
+	LogErr 'Environment vars...'
+	DieIfFails printenv;
+
+	# create the build dir
+	local objDir="${buildDir}/obj";
+	DieIfFails mkdir -p "$objDir";		
+	DieIfFails cd "$objDir";
+	
+	# configure (setting CC to a script that won't use -flto) 
+	LogErr 'configuring...';
+	DieIfFails "${sourceDir}/configure" \
+		CC="${dirBin}/cc-no.lto" \
+		--enable-option-checking=fatal \
+		--prefix=$prefix \
+		--disable-profiling \
+		--enable-optimizations \
+		--with-lto \
+		--without-assertions \
+		--without-pydebug \
+		--without-trace-refs \
+		--without-valgrind;
+
+	# restore CC when building. Note: simply reseting the env var is not enough
+	# We must pass it when calling make, because the CC used during configure
+	# is the one that would be used instead.
+
+	# python refuses to use our pretty env vars to find stuff, so we have to
+	# shove it down its throat.
+	LogErr 'patching setup.py...';
+	local setupPyFile="${sourceDir}/setup.py";
+	sed -i 's;system_lib_dirs = .*;\0 + os.environ.get('"'LIBRARY_PATH'"').split('"':'"');' "$setupPyFile"
+	sed -i 's;system_include_dirs = .*;\0 + os.environ.get('"'CPATH'"').split('"':'"');' "$setupPyFile"
+	
+	# build
+	LogErr 'building...';
+	DieIfFails make \
+		CC="${dirBin}/cc" \
+		-C "${objDir}" \
+		-j $npp ;
+
+	# install
+	LogErr 'installing...';
+	DieIfFails make \
+		CC="${dirBin}/cc" \
+		-C "${objDir}" \
+		DESTDIR="$destDir" \
+		install;
+
+	# make python means python#. The installed exe is suffixed with the version 
+	# number, for instance python3. So here we will search for the first python#
+	# we find and create a 'python' symlink to it
+	LogErr 'creating python symlink...'
+	local destDirPrefixed="${destDir}${prefix}";
+	local destDirBin="${destDirPrefixed}/bin";
+	local pythonLink="${destDirBin}/python";
+	
+	if [ ! -e "$pythonLink" ]; then
+		DieIfFails cd "$destDirBin";
+
+		local pythonExe=;
+		
+		for f in python*; do
+			f=$(printf '%s' "$f" | grep -v 'config$');
+			
+			if [ ! -z "$f" ]; then
+				pythonExe="$f";
+				break;
+			fi
+		done;
+
+		if [ -z "$pythonExe" ]; then
+			Die "unable to retrieve the installed python executable file name";
+		fi
+		
+		DieIfFails ln -s "$pythonExe" "$pythonLink";
+	fi
+	
+	# adjust the pkg-config scripts
+	LogErr 'retrieving pkg-config scripts names...'
+
+	# python creates pkg-config scripts named after the current version. Have
+	# I told you python sucks? Yeah... Anyway, since parsing ls is evil and will
+	# destroy the universe and all that, so we do this instead (and pray for the
+	# best????)
+	local scriptFiles=;
+	scriptFiles=$(
+		local dir="${destDirPrefixed}/lib/pkgconfig";		
+		for f in "$dir/"*; do
+			# remove the extension, because the adjust-pkgconfig script expects
+			# names without the .pc extension
+			f="${f%.*}";
+
+			# and remove the directory too. We need the names only.
+			f="${f#$dir/}";
+			
+			printf '%s ' "$f";
+		done;
+		);
+
+	if [ $? -ne 0  ] || [ -z "$scriptFiles" ]; then
+		Die "unable to retrieve the pkg-config script file names";
+	fi
+
+	local pkgconfigDir="${dirBin}/pkgconfig";
+		
+	for s in $scriptFiles; do
+		DieIfFails "${helperScriptDir}/adjust-pkgconfig.sh" \
+			-p="$s" \
+			-d="$destDir" \
+			--prefix="$prefix" \
+			-o="$pkgconfigDir";
+	done;	
+}

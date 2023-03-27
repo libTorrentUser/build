@@ -1,0 +1,83 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+curl
+expat
+jansson
+libjpeg-turbo
+libpng
+make
+mesa
+sdl
+speex
+speexdsp
+';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+
+	local package='ezquake';
+
+	local sourceDir;	
+	sourceDir=$(./latest.sh \
+		--host='github' \
+		--package="${package}/${package}-source" \
+		--github-regex='tarball_url.*' \
+		-b="$buildDir");
+	
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+
+	Log 'patching...';
+
+	# it seems that gcc now changed __LITTLE_ENDIAN to __ORDER_LITTLE_ENDIAN__
+	# and did the same for __BIG_ENDIAN. And __FLOAT_WORD_ORDER gained some
+	# extra underlines
+	DieIfFails sed -i 's;#if __FLOAT_WORD_ORDER == __BIG_ENDIAN;#if __FLOAT_WORD_ORDER__ == __ORDER_BIG_ENDIAN__;' "${sourceDir}/q_shared.h";
+	DieIfFails sed -i 's;#elif __FLOAT_WORD_ORDER == __LITTLE_ENDIAN;#elif __FLOAT_WORD_ORDER__ == __ORDER_LITTLE_ENDIAN__;' "${sourceDir}/q_shared.h";
+
+	# disabling -ftree-vectorize should no longer be needed
+	DieIfFails sed -i 's;\(^CFLAGS += -fno-tree-vectorize\);# \1;' "${sourceDir}/Makefile"
+
+	# apply all patches (todo: the above could also be patches)
+	for p in "../patch/${package}/"*; do
+		p=$(readlink -f "$p");
+		printf 'applying patch %s\n' "$p";
+		DieIfFails patch -p1 -i "$p" -d "$sourceDir";
+	done;
+
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--no-configure \
+		--in-source \
+		--install-options="strip";
+
+	Log 'installing...';
+	local finalDir="${destDir}${prefix}/bin/";
+
+	DieIfFails mkdir -p "$finalDir";
+
+	# ensure the dir is empty
+	DieIfFails DeleteAllFiles "$finalDir";
+	
+	DieIfFails cp "${sourceDir}/ezquake-linux-x86_64" "$finalDir"
+}

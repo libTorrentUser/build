@@ -1,0 +1,41 @@
+#!/bin/sh
+
+source script.lib.sh
+
+source ../script/build-gnu.sh
+source ../script/env.sh
+
+
+PackageBuildDependencies()
+{
+	printf 'm4';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackagePostBuild()
+{	
+	Log 'Post build...';
+	
+	local prefix="$1";
+	local destDir="$2";
+	local binDir="$3";
+	local envVarsFile="$4";
+
+	# bison package data dir (without this you will probably see bison 
+	# complaining about not founding m4sugar)
+	if EnvAddPackage "$envVarsFile" 'bison'; then
+		EnvPathPrepend "$envVarsFile" 'BISON_PKGDATADIR' "${destDir}${prefix}/share/bison";
+	fi
+}
+
+
+PackageBuild()
+{
+	BuildGNU 'bison' "$1" "$2" "$3";
+}

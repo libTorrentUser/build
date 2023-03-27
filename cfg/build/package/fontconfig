@@ -1,0 +1,82 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+expat
+freetype2
+gperf
+make
+pkgconf
+python
+';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageWarnings()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+	
+	local package='fontconfig';
+
+	local sourceDir;
+	sourceDir=$(./latest.sh \
+		--package="$package" \
+		--url='https://www.freedesktop.org/software/fontconfig/release' \
+		-b="$buildDir"
+		);
+	
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--configure-options="\
+			--prefix=$prefix \
+			--includedir=$prefix/include \
+			--enable-static \
+			--disable-nls \
+			--disable-docbook \
+			--disable-docs
+		" \
+		--dest-dir="$destDir" \
+		--install-options='install-strip'
+
+	local pkgconfigDir="$dirBin/pkgconfig";
+
+	DieIfFails ./adjust-pkgconfig.sh \
+		-p="$package" \
+		-d="$destDir" \
+		--prefix="$prefix" \
+		-o="$pkgconfigDir";
+
+	# although I painfuly made things work with this awesome script, nothing
+	# should need these libtool .la files.  Anything an user could do with them
+	# he can be done (better) with pkg-config
+	#
+	# DieIfFails ./adjust-libtool.sh \
+	#	-d="$destDir" \
+	#	--prefix="$prefix" \
+	#	-o="${dirBin}/lib";
+	DieIfFails ./adjust-libtool.sh \
+		-d="$destDir" \
+		--delete;
+}

@@ -1,0 +1,65 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+linux-headers
+make
+';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageWarnings()
+{
+	printf 'alsa-lib 1.2.6.1 build fails if we force LTO. But it seems to build fine with -flto-partition=none';
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+	
+	local package='alsa-lib';
+
+	local sourceDir;
+	sourceDir=$(./latest.sh \
+		--package="$package" \
+		--url='https://www.alsa-project.org/files/pub/lib' \
+		-b="$buildDir"
+		);
+	
+	CC="${dirBin}/cc-lto.partition.none" DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--configure-options="\
+			--prefix=$prefix \
+			--disable-debug \
+			--without-debug \
+			--without-versioned \
+			" \
+		--dest-dir="$destDir" \
+		--install-options="install-strip";
+
+	local pkgconfigDir="$dirBin/pkgconfig";
+
+	DieIfFails ./adjust-pkgconfig.sh \
+		-p="alsa" \
+		-d="$destDir" \
+		--prefix="$prefix" \
+		-o="$pkgconfigDir";
+
+}

@@ -1,0 +1,76 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+curl
+expat
+jansson
+libjpeg-turbo
+libpng
+libXxf86vm
+make
+mesa.gl
+pcre
+sdl
+speex
+speexdsp
+';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageWarnings()
+{
+	printf 'this package, currently, does not work. It is not possible to make messa build static libraries (libGL) without some ugly hacks. And even after doing that, the compiler seems to be unable to link with it correctly. It keeps complaining about missing symbols. I will try to simply compile the required mesa sources directly. One day...'
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+
+	local package='ezquake-static';
+
+	local sourceDir;	
+	sourceDir=$(./latest.sh \
+		--host='github' \
+		--package="ezquake/ezquake-source" \
+		--github-regex='tarball_url.*' \
+		-b="$buildDir");
+	
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+
+	# add the -static flag to LDFLAGS
+	DieIfFails sed -i "s;\(^LDFLAGS ?= *\);\1 -static;" "${sourceDir}/Makefile";
+
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--no-configure \
+		--in-source \
+		--install-options="strip";
+
+	Log 'installing...';
+	local finalDir="${destDir}${prefix}/bin";
+
+	DieIfFails mkdir -p "$finalDir";
+
+	# ensure the dir is empty
+	DieIfFails DeleteAllFiles "$finalDir";
+	
+	DieIfFails cp "${sourceDir}/ezquake-linux-x86_64" "$finalDir/ezquake-linux-x86_64-static"
+}

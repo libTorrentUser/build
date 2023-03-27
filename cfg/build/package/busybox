@@ -1,0 +1,249 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+make
+linux-headers
+';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageWarnings()
+{
+	return 0;
+}
+
+
+pkg_busybox_GetLatestVersion()
+{
+	local buildDir="$1";
+
+	local baseURL='https://busybox.net/downloads';
+
+	# get the latest version
+	local version;
+	version=$(
+		Download "$baseURL/" | \
+		grep -v 'busybox-snapshot.tar.bz2' | \
+		grep -o '"busybox-.*.tar.bz2"' | \
+		sort -uVr | \
+		head -n 1 | \
+		sed -e 's;^";;' -e 's;"$;;'		
+		);
+	
+	if [ $? -ne 0  ] || [ -z "$version" ]; then
+		Die "unable to retrieve the latest version";
+	fi
+
+	#printf 'latest version is %s' "$version";
+		
+	# download the sources. Notice that here you should keep the package name
+	# hard-coded because this function is called when building both the regular
+	# e2fsprogs and e2fsprogs-static
+	local sourceDir;	
+	sourceDir=$(./download.sh \
+		--url="${baseURL}/$version" \
+		--build-dir="$buildDir");
+		
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version of the source code";
+	fi
+
+	printf '%s' "$sourceDir";
+}
+
+
+pkg_busybox_SuidApplets()
+{	
+	local sourceDir="$1";
+	
+	local apps=$(grep 'suid' "${sourceDir}/NOFORK_NOEXEC.lst" | grep -v 'suid:' | sed 's;\(.*\) -.*;\1;' | tr '\n' ' ');
+
+	printf '%s' "$apps";
+}
+
+
+pkg_busybox_AllApplets()
+{
+	local objDir="$1";
+
+	local appletsHeader="${objDir}/include/applets.h";
+
+	test -f "${appletsHeader}" || Die "No include/applets.h file.";
+
+	local apps="$(
+		grep ^IF_ ${appletsHeader} \
+		| grep -v '^IF_FEATURE_' \
+		| sed 's/IF_\([A-Z0-9._-]*\)(.*/\1/' \
+		| grep -v '^BUSYBOX$' \
+		| sort | uniq
+	)";
+
+	printf '%s' "$apps";	
+}
+
+
+pkg_busybox_GenerateConfig()
+{
+    Log "Generating the config file for non-suid applets..."
+
+    local sourceDir="$1";
+    local objDir="$2";
+
+    #ieIfFails cd "$objDir";
+
+    DieIfFails make -C "$sourceDir" O="$objDir" mrproper;
+    DieIfFails make -C "$sourceDir" O="$objDir" defconfig;
+
+    DieIfFails sed -i 's;\# CONFIG_STATIC is not set;CONFIG_STATIC=y;' "${objDir}/.config";
+    DieIfFails sed -i 's;\CONFIG_FEATURE_SUID=y;CONFIG_FEATURE_SUID=n;' "${objDir}/.config";
+    DieIfFails sed -i 's;\CONFIG_FEATURE_SUID_CONFIG=y;CONFIG_FEATURE_SUID_CONFIG=n;' "${objDir}/.config";
+    DieIfFails sed -i 's;\CONFIG_FEATURE_SUID_CONFIG_QUIET=y;CONFIG_FEATURE_SUID_CONFIG_QUIET=n;' "${objDir}/.config";
+
+	# get all applets that use suid
+	local apps=$(pkg_busybox_SuidApplets "$sourceDir");
+	if [ $? -ne 0 ]; then
+		Die 'call to SuidApplets failed!';
+	fi
+
+	# disable them
+    local a=;
+	for a in $apps; do
+		local cfg=$(printf 'CONFIG_%s' "$a" | tr 'a-z' 'A-Z');
+	    DieIfFails sed -i 's;'"$cfg"'=y;'"$cfg"'=n;' "${objDir}/.config";
+	done;
+}
+
+
+pkg_busybox_GenerateConfigSUID()
+{
+    Log "Generating the config file for suid applets..."
+
+    local sourceDir="$1";
+    local objDir="$2";
+    	
+    DieIfFails make -C "$sourceDir" O="$objDir" mrproper;
+    DieIfFails make -C "$sourceDir" O="$objDir" defconfig;
+
+    DieIfFails sed -i 's;\# CONFIG_STATIC is not set;CONFIG_STATIC=y;' "${objDir}/.config";
+
+	# get all applets
+    local apps=$(pkg_busybox_AllApplets "$objDir");
+   	if [ $? -ne 0 ]; then
+   		Die 'call to AllApplets failed!';
+   	fi
+
+	# disable them
+    for a in $apps; do
+    	DieIfFails sed -i "s/^CONFIG_${a}=y\$/# CONFIG_${a} is not set/" "${objDir}/.config";
+    done
+
+    # the SHELL part of the config is bit more convoluted. Disabling thing like
+    # CONFIG_ASH/BASH?HUSH/WHATEVERSH will not stop applet "sh" being built, so
+    # we have to disable a couple more SHELL configs
+    DieIfFails sed -i "s;CONFIG_SH_IS_\(.*\)=y;# CONFIG_SH_IS_\1 is not set;" "${objDir}/.config";
+    DieIfFails sed -i "s;CONFIG_SHELL_\(.*\)=y;# CONFIG_SHELL_\1 is not set;" "${objDir}/.config";
+
+    # and even if you disable everything "SHELL", if you do not enable
+    # CONFIG_SH_IS_NONE, when you call "make" that config will be modified and
+    # one or more shells will be enabled. Because reasons.
+    DieIfFails sed -i "s;# CONFIG_SH_IS_NONE is not set;CONFIG_SH_IS_NONE=y;;" "${objDir}/.config";
+
+    # get all applets that use suid
+   	apps=$(pkg_busybox_SuidApplets "$sourceDir");
+   	if [ $? -ne 0 ]; then
+   		Die 'call to SuidApplets failed!';
+   	fi
+   
+   	# enable them
+    local a=;
+   	for a in $apps; do
+   		local cfg=$(printf 'CONFIG_%s' "$a" | tr 'a-z' 'A-Z');
+   	    DieIfFails sed -i 's;# '"$cfg"' is not set;'"$cfg"'=y;' "${objDir}/.config";
+   	done;
+}
+
+
+
+pkg_busybox_Build()
+{	
+	local objDir="$1";
+	local sourceDir="$2";
+	local destDir="$3";
+	local npp="$4";
+
+	DieIfFails make \
+		-C "$objDir" \
+		-j "$npp" \
+		LDFLAGS="--static" \
+		busybox
+
+	# instead of the somewhat standard DESTDIR, busybox seems to use 
+	# CONFIG_PREFIX to specify the dir where the stuff will be installed
+	DieIfFails make \
+		-C "$objDir" \
+		-j "$npp" \
+		LDFLAGS="--static" \
+		CONFIG_PREFIX="$destDir" \
+		busybox	\
+		'install'
+}
+
+
+pkg_busybox_BuildSUID()
+{
+	local objDir="$1";
+	local destDir="$3";
+	
+	DieIfFails cp "${objDir}/.config" "${objDir}/.config-suid-before.build";
+	
+	DieIfFails pkg_busybox_Build "$@";
+
+	# rename the executable to busybox-suid
+	local busyboxPath="${destDir}/bin/busybox";
+	DieIfFails mv "${busyboxPath}" "${busyboxPath}-suid";
+	
+	DieIfFails mv "${objDir}/.config" "${objDir}/.config-suid";
+}
+
+
+
+PackageBuild()
+{	
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	local npp="$4";
+	local dirBin="$5";
+
+	local package="busybox";
+
+	local objDir="${buildDir}/obj";
+	DieIfFails mkdir -p "$objDir";
+
+	local sourceDir;
+	sourceDir=$(pkg_busybox_GetLatestVersion "$buildDir");
+	if [ $? -ne 0  ]; then
+		Die "unable to retrieve the latest version of the source code";
+	fi
+	
+	pkg_busybox_GenerateConfigSUID "$sourceDir" "$objDir";
+	
+	pkg_busybox_BuildSUID "$objDir" "$sourceDir" "$destDir" "$npp";
+	
+	pkg_busybox_GenerateConfig "$sourceDir" "$objDir";
+ 
+	pkg_busybox_Build "$objDir" "$sourceDir" "$destDir" "$npp";
+}
+

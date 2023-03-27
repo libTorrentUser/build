@@ -1,0 +1,37 @@
+#!/bin/sh
+
+source script.lib.sh
+
+source ../script/build-xorg-proto.sh
+
+
+PackageBuildDependencies()
+{
+	printf '
+make
+';
+
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+	
+	BuildXOrgProto \
+		'renderproto' \
+		"$buildDir" \
+		"$prefix" \
+		"$destDir" \
+		"$dirBin"
+}

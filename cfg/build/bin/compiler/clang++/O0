@@ -1,0 +1,4 @@
+#!/bin/sh
+
+# see ./gcc-O0 for more info about the arguments (or, better yet, gcc docs)
+/usr/bin/clang++ "$@" -g0 -march=native -mtune=native -O0 -fno-lto -fuse-ld=lld

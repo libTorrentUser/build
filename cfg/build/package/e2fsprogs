@@ -1,0 +1,116 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+make
+';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageWarnings()
+{
+	printf 'e2fsprogs-1.46.5 is unable to create some directories during install-strip (see https://github.com/tytso/e2fsprogs/issues/112), so I have patched it in order to create those dirs "manualy"';
+}
+
+
+
+PackageBuild_e2fsprogs()
+{
+	local package="$1";
+	local buildTarget="$2";
+	shift 2;
+	
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+	
+	# download the sources. Notice that here you should keep the package name
+	# hard-coded because this function is called when building both the regular
+	# e2fsprogs and e2fsprogs-static
+	local sourceDir;	
+	sourceDir=$(./latest.sh \
+		--host='sourceforge' \
+		--package="e2fsprogs" \
+		-b="$buildDir");
+		
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version of the source code";
+	fi
+
+	# apply all patches. Notice that, unlike what we did above, patches might be
+	# specific to a certain version of es2fsprogs we are building, so here we
+	# use the $package variable instead of hard-coding the package name
+	for p in "../patch/${package}/"*; do
+		p=$(readlink -f "$p");
+		printf 'applying patch %s\n' "$p";
+		DieIfFails patch -p1 -i "$p" -d "$sourceDir";
+	done;
+
+	# if we do not manualy create these dirs, the build with fail with
+	# ---- log begin ----
+	# making install-strip in e2fsck
+	# make[1]: Entering directory '/home/vm/build/p/e2fsprogs/obj/e2fsck'
+	# 	MKDIR_P /usr/sbin /usr/share/man/man8
+	# 	INSTALL /usr/sbin/e2fsck
+	# 	LINK /usr/sbin/fsck.ext2
+	#	LINK /usr/sbin/fsck.ext3
+	# 	LINK /usr/sbin/fsck.ext4
+	# 	INSTALL_DATA /usr/share/man/man8/e2fsck.8
+	# install: can't create '/home/vm/build/d/e2fsprogs/usr/share/man/man8/e2fsck.8': No such file or directory
+	# --- log end ----
+	#
+	# I believe that MKDIR_P call was supposed to be creating these directories,
+	# since one seems to happen for each directory that is not created. But
+	# it isn't creating them. At least not on Alpine Linux. It seems to be a
+	# busybox bug, as described in
+	# https://github.com/tytso/e2fsprogs/issues/112
+	#
+	# Newers versions of the install.sh script (it is part of the libtool 
+	# project) have fixed the issue. While we wait for an updated/fixed version 
+	# of the script, the problem can be fixed by setting  MKDIR_P to... 
+	# "mkdir -p" :)
+	
+
+	# without --with-root-prefix='' the Makefile would try to put files that
+	# were supposed to go into /etc into /prefix/etc
+	MKDIR_P="mkdir -p" DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--configure-options="\
+			--prefix=$prefix \
+			--with-root-prefix='' \
+			--enable-lto \
+			--enable-symlink-install \
+			--disable-testio-debug \
+			--disable-backtrace \
+			--disable-debugfs \
+			--disable-imager \
+			--disable-resizer \
+			--disable-defrag \
+			--disable-fsck \
+			--disable-e2initrd-helper \
+			--disable-nls \
+			" \
+		--build-options="$buildTarget" \
+		--dest-dir="$destDir" \
+		--install-options="install-strip";
+}
+
+
+PackageBuild()
+{
+	PackageBuild_e2fsprogs 'e2fsprogs' "" "$@"
+}

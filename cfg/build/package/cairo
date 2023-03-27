@@ -1,0 +1,91 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+# although glib is not strictly necessary to build cairo (it will download the
+# required glib files it needs automaticaly), if glib is not present in the 
+# system BEFORE cairo build starts, some stuff might not get build. Like 
+# "cairo-gobject". And some packages (like GTK+3) require that
+	printf '
+fontconfig
+glib
+libpng
+libx11
+libxcb
+libxext
+meson
+ninja
+pixman
+xrender
+zlib
+';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageWarnings()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+	
+	local package='cairo';
+
+	local sourceDir;
+	sourceDir=$(./latest.sh \
+		--package='cairo-' \
+		--url='https://www.cairographics.org/snapshots/' \
+		-b="$buildDir"
+		);
+
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+	
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--cmd-configure='meson' \
+		--configure-options="\
+			--prefix=$prefix \
+			-D default_library=both \
+			-D b_lto=true \
+			-D gtk_doc=false \
+			-D png=enabled \
+			-D spectre=disabled
+			-D symbol-lookup=disabled
+			-D tests=disabled \
+			-D xcb=enabled \
+			-D xlib=enabled \
+			-D xlib-xcb=enabled \
+			" \
+		--cmd-build='ninja' \
+		--dest-dir="$destDir" \
+		--cmd-install='meson' \
+		--install-options="install";
+
+	local pkgconfigDir="$dirBin/pkgconfig";
+
+	DieIfFails ./adjust-pkgconfig.sh \
+		-d="$destDir" \
+		--prefix="$prefix" \
+		-o="$pkgconfigDir";
+
+}

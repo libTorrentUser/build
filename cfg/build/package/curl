@@ -1,0 +1,63 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf 'make';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+
+	local package='curl';
+
+	local sourceDir;	
+	sourceDir=$(./latest.sh \
+		--host='github' \
+		--package="${package}/${package}" \
+		-b="$buildDir");
+	
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+	
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--configure-options="\
+			--enable-options-checking=fatal \
+			--prefix=$prefix \
+			--disable-curldebug \
+ 			--disable-code-coverage \
+			--disable-debug \
+			--disable-ldap \
+  			--disable-ldaps \
+  			--disable-manual \
+  			--enable-ipv6 \
+  			--enable-optimize \
+  			--enable-threaded-resolver \
+			--with-openssl" \
+		--dest-dir="$destDir" \
+		--install-options="install-strip";
+
+	DieIfFails ./adjust-pkgconfig.sh \
+		-p="libcurl" \
+		-d="$destDir" \
+		--prefix="$prefix" \
+		-o="${dirBin}/pkgconfig";
+}

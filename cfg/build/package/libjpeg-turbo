@@ -1,0 +1,75 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+cmake
+nasm
+';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	local npp="$4";
+	local dirBin="$5";
+
+	local package='libjpeg-turbo';
+
+	local sourceDir;
+	
+	sourceDir=$(./latest.sh \
+		--host='github' \
+		--github-regex='tarball_url.*' \
+		--package="${package}/${package}" \
+		-b="$buildDir");
+	
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+
+	LogErr "configuring..."
+
+	local objDir="$buildDir/obj";
+	
+	DieIfFails cmake \
+		-S "$sourceDir" \
+		-B "$objDir" \
+		-DCMAKE_INSTALL_PREFIX=$prefix \
+		-DCMAKE_INSTALL_LIBDIR="${prefix}/lib" \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DWITH_JPEG8=ON;
+
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--no-configure \
+		--dest-dir="$destDir" \
+		--install-options="install/strip";
+
+	local pkgconfigDir="$dirBin/pkgconfig";
+
+	# libjpg-turbo names its pkgconfig script libturbojpeg. Because reasons.
+	# Also, libjpeg-turbo is currently being used as a replacement for libjpeg
+	local scriptNames="libturbojpeg libjpeg";
+	for s in $scriptNames; do
+		DieIfFails ./adjust-pkgconfig.sh \
+			-p="$s" \
+			-d="$destDir" \
+			--prefix="$prefix" \
+			-o="$pkgconfigDir";
+	done;	
+}

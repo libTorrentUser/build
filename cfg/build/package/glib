@@ -1,0 +1,88 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+# iconv #python pcre
+	printf '
+gettext
+libffi
+meson
+ninja
+pcre2
+zlib
+';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageWarnings()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+	
+	local package='glib';
+
+	local sourceDir;
+	sourceDir=$(./latest.sh \
+		--package="$package" \
+		--host='gnome' \
+		-b="$buildDir"
+		);
+
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+	
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--cmd-configure='meson' \
+		--configure-options="\
+			--prefix=$prefix \
+			-D buildtype=release \
+			-D b_lto=true \
+			-D b_coverage=false \
+			-D default_library=both \
+			-D dtrace=false \
+			-D glib_assert=false \
+			-D glib_checks=false \
+			-D glib_debug=disabled \
+			-D gtk_doc=false \
+			-D installed_tests=false \
+			-D man=false \
+			-D nls=disabled \
+			-D systemtap=false \
+			-D tests=false \
+			-D xattr=false \
+			" \
+		--cmd-build='meson compile' \
+		--dest-dir="$destDir" \
+		--cmd-install='meson' \
+		--install-options="install";
+
+	local pkgconfigDir="$dirBin/pkgconfig";
+
+	DieIfFails ./adjust-pkgconfig.sh \
+		-d="$destDir" \
+		--prefix="$prefix" \
+		-o="$pkgconfigDir";
+
+}

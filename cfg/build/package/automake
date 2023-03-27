@@ -1,0 +1,48 @@
+#!/bin/sh
+
+source script.lib.sh
+
+source ../script/build-gnu.sh
+source ../script/env.sh
+
+
+PackageBuildDependencies()
+{
+	printf '
+autoconf
+make 
+perl';
+}
+
+
+PackagePostBuild()
+{	
+	Log 'Post build...';
+	
+	local prefix="$1";
+	local destDir="$2";
+	local binDir="$3";
+	local envVarsFile="$4";
+
+	# export these env vars so other packages can use automake's perl stuff. But
+	# only do it if it hasn't been done yet
+	if EnvAddPackage "$envVarsFile" 'automake'; then
+		local path=$(find "${destDir}${prefix}/share/" -maxdepth 1 -mindepth 1 -name 'automake-*' -type d );
+			
+		for v in PERL5LIB AUTOMAKE_LIBDIR; do
+			EnvPathPrepend "$envVarsFile" "$v" "$path";
+		done;
+	fi
+	
+	# edit the paths in aclocal and put it in our bin dir, so other packages
+	# can use an aclocal that will search for stuff inside our work dir
+	local destFile="${binDir}/aclocal";
+	DieIfFails sed "s;'$prefix;'${destDir}${prefix};" "${destDir}${prefix}/bin/aclocal" > "$destFile";
+	DieIfFails chmod +x "$destFile";
+}
+
+
+PackageBuild()
+{
+	BuildGNU 'automake' "$1" "$2" "$3";	
+}

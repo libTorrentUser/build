@@ -1,0 +1,100 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+bison
+flex
+llvm-dev
+meson
+ninja
+python-mako
+python-markupsafe
+python-pygments';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageWarnings()
+{
+	printf 'This is an atempt to build a minimal static libGL. Same warnings the regular mesa build package has still apply (mesa cannot be build with "forced" LTO)';
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+
+	local package='mesa';
+
+	local sourceDir;	
+	sourceDir=$(./latest.sh \
+		--url='https://archive.mesa3d.org' \
+		--package="$package" \
+		-b="$buildDir");
+	
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+	
+	# ugly hack to enable build libgl as a static library
+	DieIfFails sed -i 's;libgl = shared_library;libgl = library;' "${sourceDir}/src/glx/meson.build"
+
+	CC=cc-no.lto DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--cmd-configure='meson' \
+		--configure-options="\
+			--prefix=$prefix \
+			--buildtype=release \
+			-Db_ndebug=true \
+			-Db_lto=true \
+			-Dcpp_rtti=false \
+			-Ddefault_library=both \
+			-Ddri3=enabled \
+			-Dgallium-drivers=radeonsi \
+			-Dgallium-vdpau=disabled \
+			-Dgallium-xvmc=disabled \
+			-Dgallium-omx=disabled \
+			-Dgallium-va=disabled \
+			-Dgallium-xa=disabled \
+			-Dgallium-opencl=disabled \
+			-Dgbm=disabled \
+			-Dgles1=disabled \
+			-Dgles2=disabled \
+			-Dglx=dri \
+			-Dlibunwind=disabled \
+			-Dllvm=enabled \
+			-Dlmsensors=disabled \
+			-Dopencl-native=false \
+			-Dopengl=true \
+			-Dplatforms=x11 \
+			-Dstrip=true \
+			-Dvalgrind=disabled \
+			-Dvulkan-drivers= \
+			" \
+		--cmd-build='ninja' \
+		--cmd-install='meson' \
+		--install-options="install --destdir=$destDir";
+
+	for s in dri egl gl; do
+		DieIfFails ./adjust-pkgconfig.sh \
+			-p="$s" \
+			-d="$destDir" \
+			--prefix="$prefix" \
+			-o="${dirBin}/pkgconfig";
+	done;
+}

@@ -1,0 +1,54 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf "\
+make
+xtrans";
+
+}
+
+
+PackageRuntimeDependencies()
+{
+	printf "\
+eudev"
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir=${3:+--dest-dir="$3"};
+
+	local package='xorg-server';
+
+	local sourceDir=$(./latest.sh \
+		-b="$buildDir" \
+		--package="$package" \
+		--url='https://www.x.org/releases/individual/xserver/'
+		);
+
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+
+		
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--configure-options=" \
+			--prefix=$prefix \
+			--enable-docs=no \
+			--enable-devel-docs=no \
+			--enable-unit-tests=no \
+			--without-systemd-daemon \
+			--disable-systemd-logind" \
+		$destDir \
+		--install-options="install-strip";
+}

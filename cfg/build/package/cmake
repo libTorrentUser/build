@@ -1,0 +1,61 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+PackageBuildDependencies()
+{
+	printf '
+linux-headers
+make
+openssl
+';
+
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	local npp="$4";
+
+	local package='cmake';
+
+	sourceDir=$(./latest.sh \
+		--host='github' \
+		--github-regex='browser_download_url.*cmake-[^-]*\.tar[^"]*"' \
+		--package="Kitware/${package}" \
+		-b="$buildDir");
+
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+
+	# the reason we use "make cmake" instead of the default "make" is because
+	# making all targets take twice as long
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--cmd-configure="bootstrap" \
+		--configure-options="\
+			--prefix=$prefix \
+			--parallel=$npp" \
+		--cmd-build="make" \
+		--build-options='cmake' \
+		--dest-dir="$destDir" \
+		--install-options="install/strip";
+
+	# after installing, cmake generates a file called install_manifest.txt 
+	# inside the obj dir. That makes the build script think the cmake package
+	# was modified (because date obj dir becomes newer than date dest dir). 
+	# Just touching anything inside dest dir solves that. Stupid cmake...
+	DieIfFails find "$destDir" -type f -exec touch -m "{}" \; -quit
+}	

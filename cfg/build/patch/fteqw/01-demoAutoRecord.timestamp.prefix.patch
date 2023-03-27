@@ -1,0 +1,27 @@
+# when using sv_demoAutoReord, put the timestamp before the name of the demo.
+# It makes sorting demos much simpler.
+--- fteqw-code-r6257-trunk/engine/server/sv_mvd.c
++++ ferneu/engine/server/sv_mvd.c
+@@ -2180,21 +2180,21 @@
+ 		{
+ 			if (svs.clients[i].state >= cs_spawned)
+ 				playercount++;
+ 		}
+ 		if (playercount >= sv_demoAutoRecord.ival)
+ 		{	//okay, we've reached our player count, its time to start recording now.
+ 			char name[MAX_OSPATH];
+ 			char timestamp[64];
+ 			time_t tm = time(NULL);
+ 			strftime(timestamp, sizeof(timestamp), "%Y%m%d_%H%M%S", localtime(&tm));
+-			Q_snprintfz(name, sizeof(name), "%s/%s%s_%s", sv_demoDir.string, sv_demoAutoPrefix.string, svs.name, timestamp);
++			Q_snprintfz(name, sizeof(name), "%s/%s%s_%s", sv_demoDir.string, sv_demoAutoPrefix.string, timestamp, svs.name);
+ #ifdef AVAIL_GZDEC
+ 			if (sv_demoAutoCompress.ival == 1 || !*sv_demoAutoCompress.string)	//default is to gzip.
+ 				Q_strncatz(name, ".mvd.gz", sizeof(name));
+ 			else
+ #endif
+ 				Q_strncatz(name, ".mvd", sizeof(name));
+ 			FS_CreatePath (name, FS_GAMEONLY);
+ 
+ 			SV_MVD_Record (SV_MVD_InitRecordFile(name));
+ 		}

@@ -1,0 +1,71 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+make
+zlib';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+
+	local package='libpng';
+
+	LogErr 'retrieve the latest version';
+	local content=$(Download 'http://www.libpng.org/pub/png/libpng.html');
+
+	local url=$( \
+		printf '%s' "$content" | \
+		grep -o 'https://.*libpng-.*\.tar\.xz"' | \
+		sed 's;\([^"]*\)";\1;' );
+
+	if [ -z "$url" ]; then
+		Die 'Unable to locate latest source code url';
+	fi;
+
+	local sourceDir=;
+	sourceDir=$(./download.sh \
+		-b="$buildDir" \
+		--url="$url";
+		);
+
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to download the latest version tar";
+	fi
+		
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--configure-options="--prefix=$prefix" \
+		--dest-dir="$destDir" \
+		--install-options="install-strip";
+
+	local pkgconfigDir="$dirBin/pkgconfig";
+
+	local scriptNames="$package ${package}16";
+	for s in $scriptNames; do
+		DieIfFails ./adjust-pkgconfig.sh \
+			-p="$s" \
+			-d="$destDir" \
+			--prefix="$prefix" \
+			-o="$pkgconfigDir";
+	done;
+
+}

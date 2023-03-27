@@ -1,0 +1,64 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf 'make';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	local dirBin="$5";
+
+	local package='pcre';
+
+	local sourceDir;	
+	sourceDir=$(./latest.sh \
+		--host='sourceforge' \
+		--package="${package}" \
+		-b="$buildDir");
+	
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+	
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--configure-options="\
+			--enable-option-checking=fatal \
+			--prefix=$prefix \
+			--enable-utf \
+			--enable-unicode-properties \
+			--enable-pcre8 \
+			--enable-pcre16 \
+			--enable-pcre32 \
+			--disable-coverage \
+			--disable-valgrind" \
+		--dest-dir="$destDir" \
+		--install-options="install-strip";
+
+	local pkgconfigDir="$dirBin/pkgconfig";
+
+	local scriptNames="libpcre libpcre16 libpcre32 libpcreposix libpcrecpp";
+	for s in $scriptNames; do
+		DieIfFails ./adjust-pkgconfig.sh \
+			-p="$s" \
+			-d="$destDir" \
+			--prefix="$prefix" \
+			-o="$pkgconfigDir";
+	done;
+}

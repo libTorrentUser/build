@@ -1,0 +1,60 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf 'make';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	local dirBin="$5";
+
+	local package='pcre2';
+
+	local sourceDir;	
+	sourceDir=$(./latest.sh \
+		--host='github' \
+		--package="PCRE2Project/${package}" \
+		-b="$buildDir");
+	
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+	
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--configure-options="\
+			--enable-option-checking=fatal \
+			--prefix=$prefix \
+			--enable-pcre2-16 \
+			--enable-pcre2-32 \
+			--disable-coverage \
+			--disable-debug \
+			--disable-valgrind" \
+		--dest-dir="$destDir" \
+		--install-options="install-strip";
+
+	local scriptNames="libpcre2-8 libpcre2-16 libpcre2-32 libpcre2-posix"; 
+	for s in $scriptNames; do
+		DieIfFails ./adjust-pkgconfig.sh \
+			-p="$s" \
+			-d="$destDir" \
+			--prefix="$prefix" \
+			-o="$dirBin/pkgconfig";
+	done;		
+}

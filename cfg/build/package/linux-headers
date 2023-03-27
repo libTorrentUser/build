@@ -1,0 +1,127 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+make
+rsync
+';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageWarnings()
+{
+	return 0;
+}
+
+
+# retrieve the latest stable kernel source URL
+#
+# This is the more robust way to retrieve the latest kernel version. It will use
+# jq to parse json documents.
+pkg_linuxHeaders_GetLatestKernelURL_jq()
+{
+	#Log "getting kernel version and URL..."
+
+	# json document containing the latest stable kernel version and the URLs of that
+	# version and also the URLs of a couple of other versions. 
+	local kernelReleasesURL="https://www.kernel.org/releases.json";
+
+	#printf 'Downloading kernel releases info...\n' 
+	local releases;		
+	releases=$(Download "$kernelReleasesURL");
+	if [ $? -ne 0 ]; then
+		Die 'unable to retrieve the kernel releases json data';
+	fi
+	
+	local kernelVersion;	
+	kernelVersion=$(printf '%s' "$releases" | jq -r '.latest_stable.version');
+	if [ $? -ne 0 ]; then
+		Die 'unable to retrieve the latest stable kernel version';
+	fi
+
+	local kernelSourceURL;
+	kernelSourceURL=$(printf '%s' "$releases" | jq -r ".releases[] | select(.version | contains(\"${_kernelVersion}\")).source");
+	if [ $? -ne 0 ]; then
+		Die 'error parsing the kernel source URL';
+	fi
+
+	#printf '\nKernel version: %s\nURL: %s\n' "$_kernelVersion" "$_kernelSourceURL"
+	printf '%s' "$kernelSourceURL" 
+}
+
+
+# retrieve the latest stable kernel source URL
+#
+# This version works. Although it is not as robust as 
+# pkg_linuxHeaders_GetLatestKernelURL_jq, this one does not require jq.
+pkg_linuxHeaders_GetLatestKernelURL()
+{	
+	# json document containing the latest stable kernel version and the URLs of that
+	# version and also the URLs of a couple of other versions. 
+	local kernelReleasesURL="https://www.kernel.org/releases.json"
+
+	#printf 'Downloading kernel releases info...\n' 
+	local releases;		
+	releases=$(Download "$kernelReleasesURL");
+	if [ $? -ne 0 ]; then
+		Die 'unable to retrieve the kernel releases json data';
+	fi
+	
+	local kernelSourceURL;	
+	kernelSourceURL=$(printf '%s' "$releases" | \
+		grep 'source' | \
+		grep -v -e '-rc' -e 'null' | \
+		sed 's;.*"\(https[^"]*\)".*;\1;' | \
+		sort -V | \
+		tail -n 1		
+		);		
+	if [ $? -ne 0 ]; then
+		Die 'error parsing the kernel source URL';
+	fi
+	
+	printf '%s' "$kernelSourceURL" 
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+	
+	local package='linux-headers';
+
+	Log 'Retrieving latest stable source URL...'
+	local sourceURL;
+	sourceURL=$(pkg_linuxHeaders_GetLatestKernelURL);
+	if [ $? -ne 0 ]; then
+		Die 'error parsing the kernel source URL';
+	fi
+
+	Log 'Downloading source code...'
+	local sourceDir;
+	sourceDir=$(./download.sh \
+		--url="$sourceURL" \
+		--build-dir="$buildDir");
+
+	Log 'Installing...'
+	#make headers_install ARCH=i386 INSTALL_HDR_PATH=/usr
+	DieIfFails make \
+		-C "$sourceDir" \
+		headers_install \
+		INSTALL_HDR_PATH="${destDir}/${prefix}"
+
+}

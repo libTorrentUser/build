@@ -1,0 +1,11 @@
+# when this is called by the build system, the work dir is the scripts dir
+source ../package/e2fsprogs;
+
+
+PackageBuild()
+{
+	PackageBuild_e2fsprogs \
+		'e2fsprogs-static' \
+		"all-static" \
+		"$@"
+}

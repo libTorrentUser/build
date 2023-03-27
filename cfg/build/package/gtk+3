@@ -1,0 +1,85 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+glib
+libepoxy
+meson
+ninja
+pango
+';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageWarnings()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+	
+	local package='gtk+3';
+
+	local sourceDir;
+	sourceDir=$(./latest.sh \
+		--package="gtk+" \
+		--host='gnome' \
+		--version-major='3' \
+		--gnome-ignore8x \
+		--gnome-ignore9x \
+		-b="$buildDir"
+		);
+
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+	
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--cmd-configure='meson' \
+		--configure-options="\
+			--prefix=$prefix \
+			--default-library=both \
+			-D buildtype=release \
+			-D b_lto=true \
+			-D demos=false \
+			-D examples=false \
+			-D gtk_doc=false \
+			-D introspection=false \
+			-D installed_tests=false \
+			-D man=false \
+			-D tests=false \
+			" \
+		--cmd-build='meson compile' \
+		--dest-dir="$destDir" \
+		--cmd-install='meson' \
+		--install-options="install-strip";
+
+	local pkgconfigDir="$dirBin/pkgconfig";
+
+	DieIfFails ./adjust-pkgconfig.sh \
+		-p="$package" \
+		-d="$destDir" \
+		--prefix="$prefix" \
+		-o="$pkgconfigDir";
+
+}

@@ -1,0 +1,81 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+make
+';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	local npp="$4";
+	local dirBin="$5";
+	
+	local package='sdl';
+
+	local sourceDir;
+	sourceDir=$(./latest.sh \
+		--host='github' \
+		--package="libsdl-org/${package}" \
+		--github-regex='tarball_url.*' \
+		-b="$buildDir");
+	
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--configure-options="\
+			${prefix:+--prefix=$prefix}
+			--enable-assertions=disabled \
+			--disable-rpath" \
+		--dest-dir="$destDir";
+
+	# sdl creates a script called sdl2-config that works pretty much like 
+	# pkg-config scripts - it returns info about how and where SDL was built.
+	#
+	# The problem is that we don't really install the binaries in the system,
+	# they are installed to {destDir}, so we must ajust the paths inside the
+	# script to match where the files currently are.
+	#
+	# Fortunately, sdl2-config has a feature where you can pass that directory 
+	# to it as a command line argument. That allows us to create a script that
+	# always passes that dir and then put that script in a directory with higher
+	# priority in PATH. That directory is {dirBin}. The only reason it exists is
+	# to solve this kind of problem
+	if [ ! -z "$destDir" ]; then
+		local destDirPrefixed="${destDir}${prefix}";
+		local destDirBin="${destDirPrefixed}/bin";
+		
+		local scriptCode=$(printf '#!/bin/sh
+%s/sdl2-config --prefix="%s" "$@"' "$destDirBin" "${destDirPrefixed}")
+
+		local scriptFile="${dirBin}/sdl2-config";
+		DieIfFails printf '%s' "$scriptCode" > "$scriptFile";
+		DieIfFails chmod +x "$scriptFile";
+	fi
+
+	# sdl also generates a traditional pkgconfig script. We adjust that one too
+	DieIfFails ./adjust-pkgconfig.sh \
+		-p="sdl2" \
+		-d="$destDir" \
+		--prefix="$prefix" \
+		-o="$dirBin/pkgconfig";
+}
