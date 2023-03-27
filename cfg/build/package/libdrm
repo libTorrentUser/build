@@ -8,6 +8,7 @@ PackageBuildDependencies()
 {
 	printf '
 cmake
+libpciaccess
 ';
 }
 
@@ -30,8 +31,8 @@ PackageBuild()
 
 	local sourceDir;
 	sourceDir=$(./latest.sh \
-		--package='177' \
-		--host='gitlab' \
+		--package='libdrm' \
+		--url='https://dri.freedesktop.org/libdrm/' \
 		-b="$buildDir"
 		);
 
@@ -48,6 +49,7 @@ PackageBuild()
 			--default-library=both \
 			-D buildtype=release \
 			-D b_lto=true \
+			-D intel=enabled \
 			-D tests=false \
 			" \
 		--cmd-build='meson compile' \

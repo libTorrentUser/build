@@ -24,7 +24,7 @@ PackageWarnings()
 }
 
 
-PackageBuild()
+PackageBuild_()
 {
 	local buildDir="$1";
 	local prefix="$2";
@@ -86,6 +86,155 @@ PackageBuild()
 	if [ $? -ne 0  ] || [ -z "$dirSource"]; then
 		Die "unable to locate source code dir"
 	fi
+
+	# note: I thinkg PARALLEL_COMPILE/LINK options only work if ninja is used.
+	# When using makefiles, that is not a problem when compiling, because the
+	# script will provide the -j flag and set it to the number of physical cpus.
+	# But it may be a problem when linking, because I think makefiles will also
+	# try to run multiple link jobs in parallel. Which is good, if weren't for
+	# the fact that linking usually uses all the RAM in the universe.
+	#
+	# Note: you can speed up the build by limiting the targets. For example, 
+	# when building llvm for mesa o a x86_64 machine, you'll probably only need
+	# -DLLVM_TARGETS_TO_BUILD=AMDGPU;X86
+	#
+	# In fact, I think mesa only needs llvm because of AMDGPU. 
+	#
+	# Mesa (actually, meson) will need llvm-config, that is why we have to use 
+	# LLVM_BUILD_TOOLS=ON. Technically we should be able to build only 
+	# llvm-config using LLVM_DISTRIBUTION_COMPONENTS, but that seems to be
+	# broken and will make the configure script fail.
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$dirSource" \
+		--cmd-configure='cmake' \
+		--configure-options=" \
+			-DCMAKE_BUILD_TYPE=Release \
+			-DCMAKE_INSTALL_PREFIX=$prefix \
+			-DCMAKE_PARALLEL_COMPILE=$npp \
+			-DCMAKE_PARALLEL_LINK=1 \
+			-DLLVM_BUILD_BENCHMARKS=OFF \
+			-DLLVM_BUILD_LLVM_DYLIB=ON \
+			-DLLVM_BUILD_DOCS=OFF \
+			-DLLVM_BUILD_EXAMPLES=OFF \
+			-DLLVM_BUILD_TESTS=OFF \
+			-DLLVM_BUILD_TOOLS=ON \
+			-DLLVM_ENABLE_ASSERTIONS=OFF \
+			-DLLVM_ENABLE_DOXYGEN=OFF \
+			-DLLVM_ENABLE_LTO=ON \
+			-DLLVM_INCLUDE_BENCHMARKS=OFF \
+			-DLLVM_INCLUDE_EXAMPLES=OFF \
+			-DLLVM_INCLUDE_TESTS=OFF \
+			-DLLVM_LINK_LLVM_DYLIB=ON \
+			-DLLVM_TARGETS_TO_BUILD=AMDGPU \
+			-DLLVM_USE_SPLIT_DWARF=ON \
+			" \
+		--dest-dir="$destDir" \
+		--install-options="install/strip";	
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	local npp="$4";
+	local dirBin="$5";
+
+	local package='llvm';
+
+	# llvm have an archive named "llvm-version.tar.xz" and "llvm-project.tar.xz"
+	# The "project" one contains files for the whole llvm project, including
+	# things like clang and a bunch of other stuff. Here we want only llvm and
+	# that is why there is a [^p] in the regex. And the [^g] is to stop it from
+	# returning the .sig file.
+	#
+	# And here we also use --no-download because llvm "partial" packages, like
+	# this one, when extract, have more than one "top" dir, and that confuses
+	# our good old extraction code, because it won't know which one is the 
+	# source dir.
+	local url;	
+	url=$(./latest.sh \
+		--no-download \
+		--host='github' \
+		--github-regex='browser_download_url.*"https://.*/releases/.*/'"$package"'-[^p].*[^g]"' \
+		--package="llvm/llvm-project" \
+		-b="$buildDir");
+	
+	if [ $? -ne 0  ] || [ -z "$url" ]; then
+		Die "unable to retrieve the latest version url";
+	fi
+
+	# download to a temporary dir
+	LogErr 'downloading to tmp dir...'
+	local dirTmp="$buildDir/tmp";
+	DieIfFails rm -rf "$dirTmp";
+	
+	Download "$url" "$dirTmp"
+	
+	if [ $? -ne 0  ]; then
+		Die "error downloading the latest version url";
+	fi
+
+	# extract the downloaded file
+	LogErr 'extracting...'
+	local tarFile=$(find "$dirTmp/" -mindepth 1 -maxdepth 1);
+	local dirSourceParent="$buildDir/source"
+	DieIfFails rm -rf "$dirSourceParent";
+	DieIfFails mkdir -p "$dirSourceParent"; 
+
+	DieIfFails tar -C "$dirSourceParent" -xf "$tarFile";
+
+	# inside that dir there should be a dir named 'llvm-xxxx' and a cmake dir
+	# (this is what confuses our regular download.sh script and that is why we
+	# cannot use it. Nor allow latest.sh to call it, therefore the --no-download
+	# flag). We then select and llvm-xxx dir as the source dir
+	local dirSource=;
+	dirSource=$(find "$dirSourceParent/" -mindepth 1 -maxdepth 1 -name "${package}*");
+
+	if [ $? -ne 0  ] || [ -z "$dirSource" ]; then
+		Die "unable to locate source code dir"
+	fi
+
+
+	#### 
+	# as of llvm15, the build is very broken and you either have to download the
+	# whole project or download the cmake project too. It is a mess
+	#
+	# # https://discourse.llvm.org/t/llvm-14-0-6-build-fails-in-configure-phase/65191/14
+	local urlCmake;	
+	urlCmake=$(./latest.sh \
+		--no-download \
+		--host='github' \
+		--github-regex='browser_download_url.*"https://.*/releases/.*/cmake.*[^g]"' \
+		--package="llvm/llvm-project" \
+		-b="$buildDir");
+
+	if [ $? -ne 0  ] || [ -z "$urlCmake" ]; then
+		Die "unable to retrieve the latest version url";
+	fi
+
+	# download to a temporary dir
+	LogErr 'downloading to tmp dir...'
+	local dirTmpCmake="$buildDir/tmp-cmake";
+	DieIfFails rm -rf "$dirTmpCmake";
+	
+	Download "$urlCmake" "$dirTmpCmake"
+	
+	if [ $? -ne 0  ]; then
+		Die "error downloading the latest cmake version url";
+	fi
+
+	# extract the downloaded file
+	LogErr 'extracting...'
+	local tarFileCmake=$(find "$dirTmpCmake/" -mindepth 1 -maxdepth 1);
+
+	DieIfFails tar -C "$dirSourceParent" -xf "$tarFileCmake";
+	
+	# must rename the dir cmake-xxxx to just cmake
+	DieIfFails mv "${dirSourceParent}/cmake"* "${dirSourceParent}/cmake"
+	
 
 	# note: I thinkg PARALLEL_COMPILE/LINK options only work if ninja is used.
 	# When using makefiles, that is not a problem when compiling, because the
