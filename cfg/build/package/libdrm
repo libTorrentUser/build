@@ -9,6 +9,9 @@ PackageBuildDependencies()
 	printf '
 cmake
 libpciaccess
+linux-headers
+meson
+ninja
 ';
 }
 

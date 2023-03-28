@@ -13,11 +13,14 @@ glslang
 libdrm
 libvdpau
 llvm-dev
+libxext
 meson
 ninja
 python-mako
 python-markupsafe
-python-pygments';
+python-pygments
+
+';
 }
 
 
