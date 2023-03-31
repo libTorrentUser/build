@@ -7,6 +7,7 @@
 _buildDir=;
 _buildOptions=;
 _cmdBuild='make';
+_cmdDir=;
 _cmdConfigure='configure';
 _cmdInstall='make';
 _configureOptions=;
@@ -107,6 +108,9 @@ make install DESTDIR="dest/Dir" || exit 1
 	if you attempt an out of source build. Using this flag the script will 
 	configure and compile from inside the source code directory.
 
+-j
+	number of parallel tasks. Defaults to the number of physical CPU cores.
+
 --no-cbi
 	same as --no-configure --no-build --no-install.
 
@@ -150,72 +154,59 @@ ParseCommandLine()
 		case $i in
 			-b=*|--build-dir=*)
 				_buildDir="$(MkDirReadLinkF ""${i#*=}"")";
-				shift;
 	      	;;
 			--build-options=*)
 				_buildOptions="${i#*=}";
-				shift;
 	      	;;
 			-c=*|--configure-options=*)
 				_configureOptions="${i#*=}"
-				shift;
 			;;
 			--cmd-build=*)
 				_cmdBuild="${i#*=}"
-				shift;
 			;;
 			--cmd-configure=*)
 				_cmdConfigure="${i#*=}"
-				shift;
 			;;
 			--cmd-install=*)
 				_cmdInstall="${i#*=}"
-				shift;
 			;;
 			-d=*|--dest-dir=*)
 				_destDir="$(MkDirReadLinkF ""${i#*=}"")";
-				shift;
 	      	;;
 	      	-h|--help)
 	      		PrintUsage;
 	      	;;
 			-i=*|--install-options=*)
 				_installOptions="${i#*=}"
-				shift;
 			;;
 			--in-source)
 				_inSourceTreeBuild="1";
-				shift;
 	      	;;
+	      	-j=*)
+				_npp="${i#*=}"
+			;;
 	      	--no-cbi)
 	      		_noConfigure="1";
 	      		_noBuild="1";
 	      		_noInstall="1";
-	      		shift;
 	      	;;
 	      	--no-configure)
 				_noConfigure="1";
-				shift;
 	      	;;
 	      	--no-delete)
 				_noDelete="1";
-				shift;
 	      	;;
 	      	--no-build)
 				_noBuild="1";
-				shift;
 	      	;;
 	      	--no-install)
 				_noInstall="1";
-				shift;
 	      	;;
 			-s=*|--source=*)
 				_sourceDir="${i#*=}";
-				shift;
 			;;
 			--)
 	      		# nothing else to parse
-	      		shift;
 	      		break;  
 	      	;;    
 	    	*)
@@ -238,10 +229,19 @@ ValidateCommandLine()
 		_objDir="${_buildDir}/obj";
 	fi
 
-	_npp=$(npproc.sh);
-	if [ $? -ne 0  ]; then
-		Die "unable to retrieve the number of physical processors";
-	fi	
+	if [ -z "$_cmdDir" ]; then
+		_cmdDir="${_buildDir}/cmd";
+	fi
+
+	# ensure the cmd dir is empty
+	DieIfFails DeleteAllFiles "$_cmdDir";
+
+	if [ -z "$_npp" ]; then
+		_npp=$(npproc.sh);
+		if [ $? -ne 0  ]; then
+			Die "unable to retrieve the number of physical processors";
+		fi	
+	fi
 
 	if [ -z "$_inSourceTreeBuild" ]; then
 		DieIfFails mkdir -p "$_objDir";
@@ -255,6 +255,7 @@ source dir:       "%s"
 obj dir:          "%s"
 configure-options "%s"
 dest dir          "%s"
+jobs (-j)         "%i"
 
 environment variables
 %s\n' \
@@ -262,7 +263,21 @@ environment variables
 	"$_objDir" \
 	"$_configureOptions" \
 	"$_destDir" \
+	"$_npp" \
 	"$(printenv | sort)";
+}
+
+
+SaveCommandScript()
+{
+	local fileName="${_cmdDir}/$1";
+	shift;
+
+	DieIfFails mkdir -p "$_cmdDir";
+
+	DieIfFails printf '%s\n\n' "$(printenv | sort)" > "$fileName";
+	
+	DieIfFails printf '%s\n' "$@" >> "$fileName";
 }
 
 
@@ -282,6 +297,13 @@ Configure()
 
 	case "$_cmdConfigure" in
 		cmake)
+			SaveCommandScript 'configure.sh' \
+				cmake \
+				-S="$_sourceDir" \
+				-B="$_objDir" \
+				-G="Unix Makefiles" \
+				$_configureOptions;
+		
 			DieIfFails cmake \
 				-S="$_sourceDir" \
 				-B="$_objDir" \
@@ -289,12 +311,18 @@ Configure()
 				$_configureOptions;
 		;;
 		meson)
+			SaveCommandScript 'configure.sh' "cd $_objDir;" meson setup "${_objDir}" $_configureOptions;
+		
 			DieIfFails cd "$_sourceDir";
 			DieIfFails meson setup "${_objDir}" $_configureOptions;
+			
 		;;
 		*)	
+			SaveCommandScript 'configure.sh' "cd $_objDir;" "${_sourceDir}/${_cmdConfigure}" $_configureOptions;
+			
 			DieIfFails cd "$_objDir";
 			DieIfFails "${_sourceDir}/${_cmdConfigure}" $_configureOptions;
+			
 		;;
 	esac
 }
@@ -310,6 +338,12 @@ Build()
 		printf 'Skippiing build step\n';
 		return 0;
 	fi
+	
+	SaveCommandScript 'build.sh' \
+		$_cmdBuild \
+		-C "$_objDir" \
+		-j "$_npp" \
+		$_buildOptions
 
 	DieIfFails $_cmdBuild \
 		-C "$_objDir" \
@@ -349,6 +383,12 @@ InstallToDestDir()
 
 	case "$_cmdInstall" in		
 		meson)
+			SaveCommandScript 'install.sh' \
+				$_installOptions \
+				${_destDir:+--destdir "$_destDir"} \
+				--no-rebuild \
+				-C "$_objDir";
+		
 			 DieIfFails meson \
 				$_installOptions \
 				${_destDir:+--destdir "$_destDir"} \
@@ -357,6 +397,11 @@ InstallToDestDir()
 				;				
 		;;
 		*)	
+			SaveCommandScript 'install.sh' \
+				-C "$_objDir" \
+				$destDir \
+				$_installOptions;
+			
 			DieIfFails "$_cmdInstall" \
 				-C "$_objDir" \
 				$destDir \

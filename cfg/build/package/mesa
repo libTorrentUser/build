@@ -44,7 +44,7 @@ PackageBuild()
 	local buildDir="$1";
 	local prefix="$2";
 	local destDir="$3";
-	#local npp="$4";
+	local npp="$4";
 	local dirBin="$5";
 
 	local package='mesa';
@@ -62,6 +62,7 @@ PackageBuild()
 	CC=cc-no.lto DieIfFails ./make.sh \
 		-b="$buildDir" \
 		-s="$sourceDir" \
+		-j="$npp" \
 		--cmd-configure='meson' \
 		--configure-options="\
 			--prefix=$prefix \

@@ -139,6 +139,9 @@ ParseCommandLine()
 	      		PrintUsage;
 	      		exit 0;
 	      	;;
+	      	-j=*)
+	      		_npp="${i#*=}"
+			;;
 	      	--lazy-check)
 	      		_lazyCheck=1;
 	      	;;
@@ -344,10 +347,12 @@ Initialize()
 	DieIfFails mkdir -p "$_logDir";
 
 	# number of physical processors
-	_npp=$(npproc.sh);
-	if [ $? -ne 0  ]; then
-		Die "unable to retrieve the number of physical processors";
-	fi	
+	if [ -z "$_npp" ]; then
+		_npp=$(npproc.sh);
+		if [ $? -ne 0  ]; then
+			Die "unable to retrieve the number of physical processors";
+		fi	
+	fi
 
 	# some packages create scripts that allow other tools to retrieve 
 	# information about them. Many times that means paths to special directories
