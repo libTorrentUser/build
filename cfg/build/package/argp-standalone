@@ -1,0 +1,62 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+PackageBuildDependencies()
+{
+	printf '
+make
+';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageWarnings()
+{
+	return 0;	
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+	
+	local package='argp-standalone';
+
+	local sourceDir;
+	sourceDir=$(./latest.sh \
+		--host='github-tag' \
+		--package="${package}/${package}" \
+		-b="$buildDir"
+		);
+
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+	
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--configure-options="\
+			--prefix=$prefix \
+		" \
+		--dest-dir="$destDir" \
+		--install-options="install-strip";
+	
+	local pkgconfigDir="$dirBin/pkgconfig";
+
+	DieIfFails ./adjust-pkgconfig.sh \
+		-d="$destDir" \
+		--prefix="$prefix" \
+		-o="$pkgconfigDir";
+}

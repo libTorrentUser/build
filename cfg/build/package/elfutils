@@ -1,0 +1,83 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+argp-standalone
+make
+zlib
+zstd
+';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageWarnings()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+	
+	local package='elfutils';
+
+	local content=$(Download 'https://sourceware.org/elfutils/');
+	local url;
+	url=$(printf '%s' "$content" | \
+		grep -o 'http[^"]*latest[^"]*' | \
+		grep -v '.sig$'
+		);
+
+	if [ $? -ne 0  ] || [ -z "$url" ]; then
+		Die 'unable to retrieve the latest source code URL';
+	fi
+
+	local sourceDir=;
+	sourceDir=$(./download.sh \
+		-b="$buildDir" \
+		--url="$url";
+		);
+
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+	
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--configure-options="\
+			--prefix=$prefix \
+			--enable-deterministic-archives \
+			--disable-nls \
+			--disable-libdebuginfod \
+			--disable-debuginfod \
+			--disable-valgrind \
+			--disable-valgrind-annotations \
+			" \
+		--dest-dir="$destDir" \
+		--install-options="install-strip";
+
+	local pkgconfigDir="$dirBin/pkgconfig";
+
+	DieIfFails ./adjust-pkgconfig.sh \
+		-d="$destDir" \
+		--prefix="$prefix" \
+		-o="$pkgconfigDir";
+
+}
