@@ -1,0 +1,61 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+make
+';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageWarnings()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+	
+	local package='musl';
+
+
+	local sourceDir;
+	sourceDir=$(./latest.sh \
+		--url='https://musl.libc.org/releases/' \
+		--package="$package" \
+		-b="$buildDir"
+		);
+
+	if [ $? -ne 0 ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tarball";
+	fi
+
+	
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--configure-options="\
+			--prefix=$prefix \
+			--disable-debug \
+			--enable-shared \
+			--enable-static \
+			" \
+		--dest-dir="$destDir" \
+		--install-options='install';
+}

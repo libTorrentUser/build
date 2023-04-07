@@ -6,9 +6,13 @@ source script.lib.sh
 
 PackageBuildDependencies()
 {
+	# libintl.h will be needed to build this package. Both musl and gettext
+	# have it. Pick whichever builds faster. musl usually builds 3 billion times
+	# faster than gettext
 	printf '
 argp-standalone
 make
+musl
 musl-fts
 musl-obstack
 xz
