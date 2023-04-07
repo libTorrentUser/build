@@ -1,0 +1,8 @@
+--- old/Makefile.am
++++ new/Makefile.am
+@@ -6,4 +6,5 @@
+ libobstack_ladir = $(includedir)
+ ACLOCAL_AMFLAGS = -Im4
+ 
++pkgconfigdir = $(libdir)/pkgconf
+ pkgconfig_DATA = musl-obstack.pc

@@ -9,6 +9,8 @@ PackageBuildDependencies()
 	printf '
 argp-standalone
 make
+musl-fts
+musl-obstack
 zlib
 zstd
 ';
@@ -63,12 +65,13 @@ PackageBuild()
 		-s="$sourceDir" \
 		--configure-options="\
 			--prefix=$prefix \
-			--enable-deterministic-archives \
-			--disable-nls \
-			--disable-libdebuginfod \
 			--disable-debuginfod \
+			--enable-deterministic-archives \
+			--disable-libdebuginfod \
+			--disable-nls \
 			--disable-valgrind \
 			--disable-valgrind-annotations \
+			--with-zlib \
 			" \
 		--dest-dir="$destDir" \
 		--install-options="install-strip";

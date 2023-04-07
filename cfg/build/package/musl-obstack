@@ -1,0 +1,78 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+automake
+libtool
+make
+pkgconf
+';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageWarnings()
+{
+	return 0;	
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+
+	
+	local package='musl-obstack';
+
+	local sourceDir;
+	sourceDir=$(./latest.sh \
+		--host='github-tag' \
+		--package="void-linux/${package}" \
+		-b="$buildDir"
+		);
+
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+
+	# apply all patches
+	local patchDir="../patch/${package}";
+	if [ $(CountItems "$patchDir") -gt 0 ]; then
+		for p in "$patchDir/"*; do
+			p=$(readlink -f "$p");
+			printf 'applying patch %s\n' "$p";
+			DieIfFails patch -p 1 -i "$p" -d "$sourceDir";
+		done;
+	fi
+	
+
+	# this is one of those projects that you must first generate the configure
+	# script. And you must run the stupid bootstrap.sh script from the source
+	# dir.	
+	DieIfFails cd "$sourceDir";
+	DieIfFails "./bootstrap.sh";		
+	DieIfFails cd -;
+	
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--configure-options="\
+			--prefix=$prefix \
+		" \
+		--dest-dir="$destDir" \
+		--install-options="install-strip";	
+}

@@ -3,11 +3,13 @@
 source script.lib.sh
 
 
+
 PackageBuildDependencies()
 {
 	printf '
-meson
-ninja
+automake
+libtool
+make
 ';
 }
 
@@ -31,13 +33,14 @@ PackageBuild()
 	local destDir="$3";
 	#local npp="$4";
 	local dirBin="$5";
+
 	
-	local package='argp-standalone';
+	local package='musl-fts';
 
 	local sourceDir;
 	sourceDir=$(./latest.sh \
 		--host='github-tag' \
-		--package="${package}/${package}" \
+		--package="void-linux/${package}" \
 		-b="$buildDir"
 		);
 
@@ -45,15 +48,23 @@ PackageBuild()
 		Die "unable to retrieve the latest version tar";
 	fi
 	
+
+	# this is one of those projects that you must first generate the configure
+	# script. And you must run the stupid bootstrap.sh script from the source
+	# dir. That is why we use a subshell here - so we do not have to worry
+	# about returning to the dir we were
+	$(
+		DieIfFails cd "$sourceDir";
+		DieIfFails "./bootstrap.sh";
+	)
+	
+	
 	DieIfFails ./make.sh \
 		-b="$buildDir" \
 		-s="$sourceDir" \
-		--cmd-configure='meson' \
 		--configure-options="\
 			--prefix=$prefix \
 		" \
-		--cmd-build='meson compile' \
 		--dest-dir="$destDir" \
-		--cmd-install='meson' \
-		--install-options="install";	
+		--install-options="install-strip";	
 }
