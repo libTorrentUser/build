@@ -64,7 +64,8 @@ PackageBuild()
 	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
 		Die "unable to retrieve the latest version tar";
 	fi
-	
+
+	CFLAGS="$CFLAGS -Wno-strict-prototypes -Wno-parentheses" \
 	DieIfFails ./make.sh \
 		-b="$buildDir" \
 		-s="$sourceDir" \
