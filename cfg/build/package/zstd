@@ -20,7 +20,7 @@ PackageBuild_zstd()
 {
 	local package="$1";
 	local buildTarget="$2";
-	local fullBuild="#3";
+	local fullBuild="$3";
 	shift 3;
 
 	local buildDir="$1";
@@ -96,7 +96,6 @@ PackageBuild_zstd()
 		local pkgconfigDir="$dirBin/pkgconfig";
 
 		DieIfFails ./adjust-pkgconfig.sh \
-			-p="libzstd" \
 			-d="$destDir" \
 			--prefix="$prefix" \
 			-o="$pkgconfigDir";
@@ -108,7 +107,7 @@ PackageBuild()
 {
 	PackageBuild_zstd \
 		'zstd' \
-		'zstd-release' \
+		'zstd-release lib-release' \
 		'1' \
 		"$@";
 }
