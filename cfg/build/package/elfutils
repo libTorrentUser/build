@@ -44,6 +44,7 @@ PackageBuild()
 	
 	local package='elfutils';
 
+	# retrieve the latest source
 	local content=$(Download 'https://sourceware.org/elfutils/');
 	local url;
 	url=$(printf '%s' "$content" | \
@@ -65,6 +66,12 @@ PackageBuild()
 		Die "unable to retrieve the latest version tar";
 	fi
 
+
+	#apply all patches
+	DieIfFails ./patch.sh "$package" "$sourceDir";
+	
+	
+	# silence musl related warnings
 	CFLAGS="$CFLAGS -Wno-strict-prototypes -Wno-parentheses" \
 	DieIfFails ./make.sh \
 		-b="$buildDir" \
@@ -83,6 +90,7 @@ PackageBuild()
 			" \
 		--dest-dir="$destDir" \
 		--install-options="install-strip";
+
 
 	local pkgconfigDir="$dirBin/pkgconfig";
 

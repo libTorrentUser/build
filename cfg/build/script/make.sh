@@ -275,9 +275,19 @@ SaveCommandScript()
 
 	DieIfFails mkdir -p "$_cmdDir";
 
-	DieIfFails printf '%s\n\n' "$(printenv | sort)" > "$fileName";
+	DieIfFails rm -f "$fileName";
+
+	# we cannot use a for loop here, at least not like this, because it would
+	# break $e on each space in the variable value
+	#for e in $(printenv | sort); do
+	#	DieIfFails printf 'export %s\n' "$e" >> "$fileName";
+	#done
+	printenv | sort | while IFS= read -r line; do
+	  DieIfFails printf 'export %s\n' "$line" >> "$fileName";
+	done
 	
-	DieIfFails printf '%s\n' "$@" >> "$fileName";
+	printf '\n' >> "$fileName";
+	DieIfFails printf '%s ' "$@" >> "$fileName";
 }
 
 

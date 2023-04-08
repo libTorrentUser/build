@@ -1,0 +1,13 @@
+--- old/lib/libeu.h
++++ new/lib/libeu.h
+@@ -32,6 +32,10 @@
+ #include <stddef.h>
+ #include <stdint.h>
+ 
++#ifndef FNM_EXTMATCH
++#define FNM_EXTMATCH 0
++#endif
++
+ extern void *xmalloc (size_t) __attribute__ ((__malloc__));
+ extern void *xcalloc (size_t, size_t) __attribute__ ((__malloc__));
+ extern void *xrealloc (void *, size_t) __attribute__ ((__malloc__));
