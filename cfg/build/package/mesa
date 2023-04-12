@@ -8,6 +8,7 @@ PackageBuildDependencies()
 {
 	printf '
 bison
+elfutils
 flex
 glslang
 libdrm

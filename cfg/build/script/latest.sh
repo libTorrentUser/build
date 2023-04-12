@@ -289,6 +289,13 @@ Github()
 				break;
 			fi;
 		done
+
+		# if everything fails, try the tarball_url variable
+		if [ -z "$url" ]; then
+			url=$( \
+				printf '%s' "$content" | \
+				grep -o 'tarball_url.*' );
+		fi
 	fi
 	
 	_urlTar=$(\
@@ -296,7 +303,10 @@ Github()
 		sed 's;.*":[^"]*"\([^"]*\).*;\1;');
 
 	if [ $? -ne 0 ] || [ -z "$_urlTar" ]; then
-		Die "unable to retrieve the latest version tarball URL";
+		Die 'unable to retrieve the latest version tarball URL
+
+content:
+'"$content";
 	fi	
 }
 
