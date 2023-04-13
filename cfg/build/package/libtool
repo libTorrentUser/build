@@ -16,14 +16,21 @@ PackagePostBuild()
 	local prefix="$1";
 	local destDir="$2";
 	local binDir="$3";
+	local envVarsFile="$4";
 
 	# edit the paths in libtoolize and put it in our bin dir, so other packages
 	# can use one that will search for stuff inside our work dir
 	for a in libtoolize; do
 		local destFile="${binDir}/${a}";
 		DieIfFails sed "s;dir=\"$prefix;dir=\"${destDir}${prefix};" "${destDir}${prefix}/bin/${a}" > "$destFile";
+		DieIfFails sed -i "s;dir=$prefix;dir=${destDir}${prefix};" "$destFile";
 		DieIfFails chmod +x "$destFile";
 	done
+
+	# add libtool stuff to autoconf search path
+	if EnvAddPackage "$envVarsFile" 'libtool'; then
+		EnvPathPrepend "$envVarsFile" "ACLOCAL_PATH" "${destDir}${prefix}/share/aclocal";
+	fi
 }
 
 

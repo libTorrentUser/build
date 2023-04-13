@@ -1,0 +1,84 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+automake
+autoconf
+libtool
+make
+';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageWarnings()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+	
+	local package='brotli';
+
+
+	local sourceDir;
+	sourceDir=$(./latest.sh \
+		--host='github' \
+		--package="google/${package}" \
+		-b="$buildDir"
+		);
+
+	if [ $? -ne 0 ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tarball";
+	fi
+
+
+	#apply all patches
+	DieIfFails ./patch.sh "$package" "$sourceDir";
+
+
+	Log 'executing bootstrap script...'
+	printenv | sort;
+	DieIfFails cd "$sourceDir"
+	DieIfFails "./bootstrap";
+	DieIfFails cd -;
+
+	if [ $? -ne 0 ]; then
+		
+		Die "call to bootstrap failed";
+	fi
+	
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--configure-options="\
+			--prefix=$prefix \
+			--build=x86_64 \
+			" \
+		--dest-dir="$destDir" \
+		--install-options="install-strip";
+
+	local pkgconfigDir="$dirBin/pkgconfig";
+		
+	DieIfFails ./adjust-pkgconfig.sh \
+		-d="$destDir" \
+		--prefix="$prefix" \
+		-o="$pkgconfigDir";
+}
