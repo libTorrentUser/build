@@ -28,7 +28,8 @@ PackageBuild()
 	local dirURL=;
 	dirURL=$( \
 		printf '%s' "$content" | \
-		grep -o 'http://.*/releasebuilds/[^\?][^"]*'
+		grep -o 'http://.*/releasebuilds/[^\?][^"]*' | \
+		head -n 1
 		);
 
 	if [ $? -ne 0  ] || [ -z "$dirURL" ]; then
@@ -57,7 +58,10 @@ PackageBuild()
 	done
 
 	if [ $? -ne 0  ] || [ -z "$tarName" ]; then
-		Die "unable to retrieve the latest version url";
+		Die 'unable to retrieve the latest version url
+
+content:
+'"$content";
 	fi	
 
 	local url="${dirURL}${tarName}";
@@ -77,6 +81,7 @@ PackageBuild()
 	DieIfFails ./make.sh \
 		-b="$buildDir" \
 		-s="$sourceDir" \
+		--in-source \
 		--configure-options=" \
 			--enable-option-checking=fatal \
 			--prefix=$prefix \

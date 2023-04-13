@@ -7,9 +7,8 @@ source script.lib.sh
 PackageBuildDependencies()
 {
 	printf '
-automake
-autoconf
-libtool
+libjpeg-turbo
+libpng
 make
 ';
 }
@@ -35,13 +34,13 @@ PackageBuild()
 	#local npp="$4";
 	local dirBin="$5";
 	
-	local package='brotli';
+	local package='sjpeg';
 
 
 	local sourceDir;
 	sourceDir=$(./latest.sh \
 		--host='github' \
-		--package="google/${package}" \
+		--package="webmproject/${package}" \
 		-b="$buildDir"
 		);
 
@@ -53,20 +52,12 @@ PackageBuild()
 	#apply all patches
 	DieIfFails ./patch.sh "$package" "$sourceDir";
 
-
-	Log 'executing bootstrap script...'
-	printenv | sort;
-	DieIfFails cd "$sourceDir"
-	DieIfFails "./bootstrap";
-	DieIfFails cd -;
-
 	
 	DieIfFails ./make.sh \
 		-b="$buildDir" \
 		-s="$sourceDir" \
 		--configure-options="\
 			--prefix=$prefix \
-			--build=x86_64 \
 			" \
 		--dest-dir="$destDir" \
 		--install-options="install-strip";
