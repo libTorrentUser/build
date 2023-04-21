@@ -1,0 +1,88 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+automake
+autoconf
+giflib
+libtool
+libjpeg-turbo
+libpng
+make
+';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageWarnings()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+	
+	local package='libwebp';
+
+
+	local sourceDir;
+	sourceDir=$(./latest.sh \
+		--url='http://downloads.webmproject.org/releases/webp/' \
+		--package="${package}" \
+		-b="$buildDir"
+		);
+
+	if [ $? -ne 0 ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tarball";
+	fi
+
+
+	#apply all patches
+	DieIfFails ./patch.sh "$package" "$sourceDir";
+
+
+	#Log 'executing autogen.sh script...'
+	#printenv | sort;
+	#DieIfFails cd "$sourceDir"
+	#DieIfFails "./autogen.sh";
+	#DieIfFails cd -;
+
+	
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--configure-options="\
+			--prefix=$prefix \
+			--disable-asserts \
+			--enable-libwebpmux \
+			--enable-libwebpdemux \
+			--enable-libwebpdecoder \
+			--disable-shared \
+			--enable-static \
+			" \
+		--dest-dir="$destDir" \
+		--install-options="install-strip";
+
+	local pkgconfigDir="$dirBin/pkgconfig";
+		
+	DieIfFails ./adjust-pkgconfig.sh \
+		-d="$destDir" \
+		--prefix="$prefix" \
+		-o="$pkgconfigDir";
+}

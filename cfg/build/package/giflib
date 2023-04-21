@@ -1,0 +1,63 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+make
+';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageWarnings()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+	
+	local package='giflib';
+
+
+	# download the source code
+	local sourceDir;
+	sourceDir=$(./latest.sh \
+		--host='sourceforge' \
+		--package="${package}" \
+		-b="$buildDir"
+		);
+
+	if [ $? -ne 0 ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tarball";
+	fi
+	
+
+	#apply all patches
+	DieIfFails ./patch.sh "$package" "$sourceDir";
+
+
+	# build
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--no-configure \
+		--in-source \
+		--dest-dir="$destDir" \
+		--install-options="PREFIX=$prefix install";
+}
