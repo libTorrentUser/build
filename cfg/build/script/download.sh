@@ -128,9 +128,16 @@ ExtractSource()
 	# contents with "tar -t" or extract it. Since we are going to extract it 
 	# anyway...
 	if ! tar -C "$_tmpDir" -xf "${_buildDir}/${_tarName}"; then
-		# if tar fails, try extracting with 7z. 7z will output a bunch of stuff
-		# so we must redirect the output to /dev/null
-		DieIfFails 7z x "${_buildDir}/${_tarName}" -o"$_tmpDir" > /dev/null
+		case "$_tarName" in
+			*.zip)
+				DieIfFails unzip -q -d "$_tmpDir" "${_buildDir}/${_tarName}";
+			;;
+			*)
+				# try extracting with 7z. 7z will output a bunch of stuff
+				# so we must redirect the output to /dev/null
+				DieIfFails 7z x "${_buildDir}/${_tarName}" -o"${_tmpDir}/" > /dev/null
+			;;
+		esac
 	fi
 
 	local version=$(find "$_tmpDir" -maxdepth 1 -mindepth 1);
@@ -140,12 +147,13 @@ ExtractSource()
 		Die "unable to retrieve the latest version name";
 	fi	
 
-	# and now we can finaly move it out of there
+	# and now we can finaly move it out of there	
 	DieIfFails rm -rf "${_buildDir}/${version}";
 	DieIfFails mv "${_tmpDir}/${version}" "${_buildDir}/"
 
-	local sourceDir="${_buildDir}/"$(printf '%s' "$version" | sed 's;\(.*\).tar.*$;\1;');
-
+	#local sourceDir="${_buildDir}/"$(printf '%s' "$version" | sed 's;\(.*\).tar.*$;\1;');
+	local sourceDir="${_buildDir}/${version}";	
+	
 	printf '%s' "$sourceDir";
 }
 

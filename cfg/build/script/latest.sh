@@ -42,7 +42,7 @@ PrintUsage()
 --gnome-ignore9x
 	useful when dealing with GTK related packages because GTK devs are insane
 	and decided that the .9x branches are actualy betas of the next major 
-	version.	
+	version.
 
 --host
 	lots of source codes are stored in very popular hosts. That (sometimes) 
@@ -62,8 +62,11 @@ PrintUsage()
 	selecting the correct one, you can use --github-regex to specify a regular
 	expression capable of selected the one you need.
 
+	"github-master"
+	retrieve the latest commit on the master branch.
+
 	"github-tag"
-	same as above, but the project is using tags instead of releases
+	same as "github", but the project is using tags instead of releases
 
 	"gitlab"
 	package is hosted on gitlab and the latest source code can be retrieved
@@ -311,6 +314,12 @@ content:
 }
 
 
+GithubMaster()
+{
+	_urlTar="https://github.com/${_package}/archive/master.zip";
+}
+
+
 GithubTag()
 {
 	local url="https://api.github.com/repos/${_package}/tags";
@@ -527,6 +536,9 @@ LatestVersion()
 	case "$_host" in
 		github)
 			Github;
+		;;
+		github-master)
+			GithubMaster;
 		;;
 		github-tag)
 			GithubTag;

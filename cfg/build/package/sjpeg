@@ -39,7 +39,7 @@ PackageBuild()
 
 	local sourceDir;
 	sourceDir=$(./latest.sh \
-		--host='github' \
+		--host='github-master' \
 		--package="webmproject/${package}" \
 		-b="$buildDir"
 		);
@@ -56,16 +56,22 @@ PackageBuild()
 	DieIfFails ./make.sh \
 		-b="$buildDir" \
 		-s="$sourceDir" \
-		--configure-options="\
-			--prefix=$prefix \
-			" \
-		--dest-dir="$destDir" \
-		--install-options="install-strip";
+		--in-source \
+		--no-configure \
+		--no-install;
 
-	local pkgconfigDir="$dirBin/pkgconfig";
-		
-	DieIfFails ./adjust-pkgconfig.sh \
-		-d="$destDir" \
-		--prefix="$prefix" \
-		-o="$pkgconfigDir";
+	# manually install. Because there ain't none of that in the makefile
+	Log 'Manually installing...'
+
+	local installDir="${destDir}/${prefix}";
+	printf 'installing to "%s"\n' "$installDir";
+	
+	DieIfFails DeleteAllFiles "$installDir";
+
+	for d in include lib; do
+		DieIfFails mkdir -p "${installDir}/${d}";
+	done
+
+	DieIfFails cp "${sourceDir}/src/sjpeg.h" "${installDir}/include/"
+	DieIfFails cp "${sourceDir}/src/libsjpeg.a" "${installDir}/lib/"
 }
