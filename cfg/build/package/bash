@@ -1,0 +1,70 @@
+#!/bin/sh
+
+source script.lib.sh
+
+source ../script/build-gnu.sh
+
+
+PackageBuildDependencies()
+{
+	printf '
+make
+musl';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+
+	local package='bash';
+
+	# NOTE: we do not use build-gnu.sh here because bash requires aditional
+	# configure options to work properly
+	local sourceDir=$(./latest.sh \
+		--host='gnu' \
+		--package="$package" \
+		-b="$buildDir");
+	
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+
+
+	#--without-bash-malloc is needed on musl systems. Without it you will see
+	# an error like 
+	# "bash: xmalloc: locale.c:84: cannot allocate 18 bytes"
+	#
+	# Details here
+	# https://patchwork.ozlabs.org/project/buildroot/patch/20170523171931.18744-1-dsabogalcc@gmail.com/
+	#	
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--configure-options="\
+			--prefix=$prefix \
+			--disable-nls \
+			--disable-rpath \
+			--without-bash-malloc \
+			" \
+		--dest-dir="$destDir" \
+		--install-options='install-strip';
+		
+
+	local pkgconfigDir="$dirBin/pkgconfig";
+	
+	DieIfFails ./adjust-pkgconfig.sh \
+		-d="$destDir" \
+		--prefix="$prefix" \
+		-o="$pkgconfigDir";
+}

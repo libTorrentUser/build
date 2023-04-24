@@ -224,7 +224,7 @@ Scan()
 		local tarName;		
 		tarName=$( \
 			printf '%s' "$content" | \
-			grep -o "${_package}"'[^"]*\.'"$ext"'"' | \
+			grep -o "${_package}-"'[^"]*\.'"$ext"'"' | \
 			grep -v "${_package}-latest.*" | \
 			grep -v 'rc' | \
 			sed 's;\([^"]*\)";\1;' | \

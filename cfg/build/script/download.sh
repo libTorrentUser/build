@@ -127,7 +127,7 @@ ExtractSource()
 	# So, in order to find out what it really is, we either have to list the
 	# contents with "tar -t" or extract it. Since we are going to extract it 
 	# anyway...
-	if ! tar -C "$_tmpDir" -xf "${_buildDir}/${_tarName}"; then
+	if ! tar -C "$_tmpDir" -xf "${_buildDir}/${_tarName}" > /dev/null ; then
 		case "$_tarName" in
 			*.zip)
 				DieIfFails unzip -q -d "$_tmpDir" "${_buildDir}/${_tarName}";
@@ -140,20 +140,28 @@ ExtractSource()
 		esac
 	fi
 
-	local version=$(find "$_tmpDir" -maxdepth 1 -mindepth 1);
-	version="${version#${_tmpDir}/}";
-		
-	if [ $? -ne 0  ] || [ -z "$version" ]; then
-		Die "unable to retrieve the latest version name";
-	fi	
-
-	# and now we can finaly move it out of there	
-	DieIfFails rm -rf "${_buildDir}/${version}";
-	DieIfFails mv "${_tmpDir}/${version}" "${_buildDir}/"
-
-	#local sourceDir="${_buildDir}/"$(printf '%s' "$version" | sed 's;\(.*\).tar.*$;\1;');
-	local sourceDir="${_buildDir}/${version}";	
+	# usualy there will be only one dir inside $_tmpDir, so we can simply get
+	# its name and move it outside. But some archives do not have this "parent"
+	# directory. To handle those cases we create a "src" dir and put all files
+	# inside it
+	local sourceDir="${_buildDir}/src";
+	DieIfFails rm -rf "$sourceDir";
 	
+	if [ $(CountItems "$_tmpDir") -eq 1 ]; then
+		local dir=;
+		dir=$(find "$_tmpDir" -maxdepth 1 -mindepth 1);
+		dir="${dir#${_tmpDir}/}";
+
+		if [ $? -ne 0  ] || [ -z "$dir" ]; then
+			Die "unable to retrieve the sources' dir name";
+		fi	
+			
+		DieIfFails mv "${_tmpDir}/${dir}" "$sourceDir"
+	else
+		DieIfFails mkdir -p "$sourceDir";
+		DieIfFails mv "${_tmpDir}/"* "${sourceDir}/"
+	fi
+			
 	printf '%s' "$sourceDir";
 }
 

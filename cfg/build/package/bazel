@@ -1,0 +1,60 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+# java (really!!!)
+	printf '
+bash';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageWarnings()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+	
+	local package='bazel';
+
+	local sourceDir;
+	sourceDir=$(./latest.sh \
+		--package="bazelbuild/${package}" \
+		--host='github' \
+		--github-regex='browser_download_url.*-dist.zip"' \
+		-b="$buildDir"
+		);
+
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest sources";
+	fi
+	
+	Log 'Building bazel to build bazel...'
+	DieIfFails cd "$sourceDir";
+	DieIfFails './compile.sh';
+	DieIfFails cd -;
+
+	Log 'Manually installing...';
+	local finalDir="${destDir}/${prefix}";
+	local finalDirBin="${finalDir}/bin";
+	DieIfFail mkdir -p "${finalDirBin}";
+	DieIfFails DeleteAllFiles "${finalDir}";
+	DieIfFails cp "$sourceDir/output/bazel"	"$finalDirBin";
+}
