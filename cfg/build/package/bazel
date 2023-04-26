@@ -6,9 +6,13 @@ source script.lib.sh
 
 PackageBuildDependencies()
 {
-# java (really!!!)
-	printf '
-bash';
+# for hava, it worked when I installed openjdk11 in Alpine
+	printf '	
+bash
+java
+linux-headers
+unzip
+zip';
 }
 
 
@@ -47,8 +51,12 @@ PackageBuild()
 	fi
 	
 	Log 'Building bazel to build bazel...'
+
+	# note, this EXTRA_BAZEL_ARGS thing is explicetly done in the official docs.
+	# I tried to build without it and get errors. Errors late. Very f.... late
+	# in the build process. Feel free to try
 	DieIfFails cd "$sourceDir";
-	DieIfFails './compile.sh';
+	DieIfFails EXTRA_BAZEL_ARGS="--tool_java_runtime_version=local_jdk" bash './compile.sh';
 	DieIfFails cd -;
 
 	Log 'Manually installing...';
