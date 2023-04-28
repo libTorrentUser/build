@@ -22,7 +22,7 @@ BuildInfozip()
 	# that value to something that matches the versioning used in the source
 	# code archives
 	local version=;
-	version=$(curl -s "https://infozip.sourceforge.net/${pageVersion}.html" | \
+	version=$(Download "https://infozip.sourceforge.net/${pageVersion}.html" | \
 		grep 'New features' | \
 		sed 's;.*Zip \([^<]*\).*;\1;');
 

@@ -1,12 +1,17 @@
 #!/bin/sh
 
+# it seems this has finaly became part of POSIX (2022)
+set -o pipefail
+
+
 source script.lib.sh
 
 
 
 PackageBuildDependencies()
 {
-# for hava, it worked when I installed openjdk11 in Alpine
+# for java, it worked when I installed openjdk11 in Alpine. It seems v11 is the
+# latest one they currently support
 	printf '	
 bash
 java
@@ -49,14 +54,65 @@ PackageBuild()
 	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
 		Die "unable to retrieve the latest sources";
 	fi
+
+
+	Log 'Patching hardcoded bash paths...'
+	# replace the hardcoded /usr/bin/bash shebangs by '/usr/bin/env bash'
+	# so the system can locate bash when it is not inside /usr/bin (which will
+	# be our case here if you let this build system build bash for you)
+	#
+	# we cannot use "find -exec" because it will ignore errors. Apparently
+	# because POSIX says so. Because of that, we use xargs instead	
+
+	#find "$sourceDir" -type f -print0 | \
+	#	xargs -0 -n 1 -t -I {} sed "s;{}";
+
+	# this will only work correctly if "set -o pipefail" was called inside this
+	# script. Only when pipefail is enabled we are able to retrieve the piped
+	# command's exit status. 
+
+	#if [ $? -ne 0 ]; then
+	#	Die 'patching of hardcoded bash paths failed';
+	#fi
+	
 	
 	Log 'Building bazel to build bazel...'
 
 	# note, this EXTRA_BAZEL_ARGS thing is explicetly done in the official docs.
-	# I tried to build without it and get errors. Errors late. Very f.... late
+	# Not really sure what "--tool_java_runtime_version=local_jdk" does, but I 
+	# tried to build without it and get errors. Errors late. Very f.... late
 	# in the build process. Feel free to try
+	#
+	# The "--host_action_env=CPATH" is the only thing I added. It seems to be
+	# the only way to make bazel use the CPATH env variable. It also nees our
+	# modified PATH, but PATH is uses by default. I think. compile.sh passes
+	# it as --action_env=PATH. Confusingly enough, CPATH cannot be passed like
+	# that. It can, but it will be ignored. You have to use host_action_env for
+	# CPATH. Why PATH is different, I don't know. Maybe PATH really is read by
+	# default and that --action_env=PATH is passing it to something else...
+	local workDir="$buildDir/work";
+	if [ -e "$workDir" ]; then
+		DieIfFails DeleteAllFiles "$workDir";
+	fi
+
+	# log the current env cars
+	printf '\n%s\n\n' "$(printenv | sort)";
+
+
+	#CPATH="$CPATH" \
+	# --action_env=CPATH
+	#--action_env=CPATH=$CPATH	
+	# --host_action_env=CPATH
+	# VERBOSE='yes' \
 	DieIfFails cd "$sourceDir";
-	DieIfFails EXTRA_BAZEL_ARGS="--tool_java_runtime_version=local_jdk" bash './compile.sh';
+
+	BAZEL_WRKDIR="$workDir" \
+		EXTRA_BAZEL_ARGS="--tool_java_runtime_version=local_jdk \
+			--host_action_env=CPATH \
+			--host_copt=Wno-parentheses \
+			" \
+		DieIfFails bash './compile.sh';
+		
 	DieIfFails cd -;
 
 	Log 'Manually installing...';
