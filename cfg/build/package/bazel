@@ -62,19 +62,25 @@ PackageBuild()
 	# be our case here if you let this build system build bash for you)
 	#
 	# we cannot use "find -exec" because it will ignore errors. Apparently
-	# because POSIX says so. Because of that, we use xargs instead	
+	# because POSIX says so. Because of that, we use xargs instead
+	local envPath=;
+	envPath="$(command -v env)";
+	if [ $? -ne 0 ] || [ -z "$envPath" ] ; then
+		Die 'command "env" not found';
+	fi
 
-	#find "$sourceDir" -type f -print0 | \
-	#	xargs -0 -n 1 -t -I {} sed "s;{}";
+	# replace any occurence of the harcoded shebang "#!/.*/bash" by 
+	# "#!/bin/env bash" (assuming env is in "/bin". $envPath will have the path)
+	find "$sourceDir" -type f -print0 | \
+		xargs -0 -n 1 -I {} \
+			sed -i "1 s;#!/bin/bash;#!${envPath} bash;" "{}";
 
 	# this will only work correctly if "set -o pipefail" was called inside this
 	# script. Only when pipefail is enabled we are able to retrieve the piped
 	# command's exit status. 
-
-	#if [ $? -ne 0 ]; then
-	#	Die 'patching of hardcoded bash paths failed';
-	#fi
-	
+	if [ $? -ne 0 ]; then
+		Die 'patching of hardcoded bash paths failed';
+	fi
 	
 	Log 'Building bazel to build bazel...'
 
@@ -90,6 +96,10 @@ PackageBuild()
 	# that. It can, but it will be ignored. You have to use host_action_env for
 	# CPATH. Why PATH is different, I don't know. Maybe PATH really is read by
 	# default and that --action_env=PATH is passing it to something else...
+	#
+	# --host_copt is used to pass aditional compilation flags. Here we use it
+	# to disable the "parenthesis" warning because some of those will be issued
+	# when the compiler sees some crazy stuff inside musl libc endian.h header 
 	local workDir="$buildDir/work";
 	if [ -e "$workDir" ]; then
 		DieIfFails DeleteAllFiles "$workDir";
@@ -98,18 +108,12 @@ PackageBuild()
 	# log the current env cars
 	printf '\n%s\n\n' "$(printenv | sort)";
 
-
-	#CPATH="$CPATH" \
-	# --action_env=CPATH
-	#--action_env=CPATH=$CPATH	
-	# --host_action_env=CPATH
-	# VERBOSE='yes' \
 	DieIfFails cd "$sourceDir";
 
 	BAZEL_WRKDIR="$workDir" \
 		EXTRA_BAZEL_ARGS="--tool_java_runtime_version=local_jdk \
 			--host_action_env=CPATH \
-			--host_copt=Wno-parentheses \
+			--host_copt=-Wno-error=parentheses \
 			" \
 		DieIfFails bash './compile.sh';
 		
