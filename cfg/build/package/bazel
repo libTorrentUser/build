@@ -79,6 +79,18 @@ PackageBuild()
 	# script. Only when pipefail is enabled we are able to retrieve the piped
 	# command's exit status. 
 	if [ $? -ne 0 ]; then
+		Die 'patching of hardcoded bash shbang paths failed';
+	fi
+
+	# replace any occurence of the harcoded bash path"/bin/bash" by 
+	# "bash", so whatever is calling bash can find it as long as it is in PATH
+	find "$sourceDir" -type f -print0 | \
+		xargs -0 -n 1 -I {} \
+			sed -i "s;/bin/bash;bash;" "{}";
+
+	# as I said before, this will only work correctly if "set -o pipefail" 
+	# was called inside this script.
+	if [ $? -ne 0 ]; then
 		Die 'patching of hardcoded bash paths failed';
 	fi
 	
