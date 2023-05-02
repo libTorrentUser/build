@@ -578,7 +578,7 @@ UpdateSearchPaths()
 	local package="$1";
 
 	# if the package has already been added once, do not do it again
-	if grep -q "$package" "$_packagesAddedToSearchPaths"; then
+	if grep -q "^${package}\$" "$_packagesAddedToSearchPaths"; then
 		return 0;
 	fi;
 		

@@ -16,6 +16,7 @@ PackageBuildDependencies()
 bash
 java
 linux-headers
+python
 unzip
 zip';
 }
@@ -42,6 +43,7 @@ PackageBuild()
 	local dirBin="$5";
 	
 	local package='bazel';
+
 
 	local sourceDir;
 	sourceDir=$(./latest.sh \
@@ -96,22 +98,28 @@ PackageBuild()
 	
 	Log 'Building bazel to build bazel...'
 
-	# note, this EXTRA_BAZEL_ARGS thing is explicetly done in the official docs.
-	# Not really sure what "--tool_java_runtime_version=local_jdk" does, but I 
-	# tried to build without it and get errors. Errors late. Very f.... late
-	# in the build process. Feel free to try
+	# EXTRA_BAZEL_ARGS is a var you can use to pass aditional args (ha!) to 
+	# bazel during the bootstrapping process.
 	#
-	# The "--host_action_env=CPATH" is the only thing I added. It seems to be
+	# Not really sure what "--tool_java_runtime_version=local_jdk" does, but it
+	# is explicetly done in the official docs. I tried to build without it and 
+	# got errors. Errors late. Very f.... late in the build process. Feel free 
+	# to try
+	#
+	# The "--host_action_env=CPATH" amd "--action_env=CPATH" seems to be
 	# the only way to make bazel use the CPATH env variable. It also nees our
-	# modified PATH, but PATH is uses by default. I think. compile.sh passes
-	# it as --action_env=PATH. Confusingly enough, CPATH cannot be passed like
-	# that. It can, but it will be ignored. You have to use host_action_env for
-	# CPATH. Why PATH is different, I don't know. Maybe PATH really is read by
-	# default and that --action_env=PATH is passing it to something else...
+	# modified PATH, but PATH is used by default. I think. compile.sh passes
+	# it as --action_env=PATH. Not sure what is the distinction between "host"
+	# and "non-host" action_env. The bootstrap seems to need both. If you pass
+	# just one of them, the build will fail and complain it cannot find a header
+	# that is in a non-standard path (CPATH reason to be)
 	#
 	# --host_copt is used to pass aditional compilation flags. Here we use it
 	# to disable the "parenthesis" warning because some of those will be issued
 	# when the compiler sees some crazy stuff inside musl libc endian.h header 
+	#
+	# _LARGEFILE64_SOURCE must be defined on musl or the type off64_t won't be
+	# defined.
 	local workDir="$buildDir/work";
 	if [ -e "$workDir" ]; then
 		DieIfFails DeleteAllFiles "$workDir";
@@ -125,16 +133,22 @@ PackageBuild()
 	BAZEL_WRKDIR="$workDir" \
 		EXTRA_BAZEL_ARGS="--tool_java_runtime_version=local_jdk \
 			--host_action_env=CPATH \
+			--action_env=CPATH \
+			--host_copt=-Wno-error=cast-qual \
 			--host_copt=-Wno-error=parentheses \
+			--host_copt=-Wno-error=undef \
+			--host_copt=-D_LARGEFILE64_SOURCE \
+			--copt=-D_LARGEFILE64_SOURCE \
 			" \
 		DieIfFails bash './compile.sh';
 		
 	DieIfFails cd -;
 
+
 	Log 'Manually installing...';
-	local finalDir="${destDir}/${prefix}";
+	local finalDir="${destDir}${prefix}";
 	local finalDirBin="${finalDir}/bin";
-	DieIfFail mkdir -p "${finalDirBin}";
+	DieIfFails mkdir -p "${finalDirBin}";
 	DieIfFails DeleteAllFiles "${finalDir}";
-	DieIfFails cp "$sourceDir/output/bazel"	"$finalDirBin";
+	DieIfFails cp "${sourceDir}/output/bazel"	"${finalDirBin}/";
 }
