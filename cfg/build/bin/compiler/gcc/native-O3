@@ -1,0 +1,15 @@
+#!/bin/sh
+
+# -g0
+#     disable any sort of debug info (-g0 negates -g)
+#
+# -march=native
+#     allow the use all instructions sets available in the host CPU
+#
+# -mtune=native
+#     tune the code to the host CPU
+#     
+# note: you add the flag "-frecord-gcc-switches" and then use 
+# "readelf -p '.GCC.command.line' someExec" in order to see if these flags were
+# really used
+/usr/bin/gcc "$@" -g0 -march=native -mtune=native -O3

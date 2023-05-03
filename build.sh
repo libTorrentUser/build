@@ -72,6 +72,11 @@ dependencies and build them. You can pass more than one package if you wish.
 	directory where the configuration files are located. The default is
 	"cfg/build"
 
+-j
+--jobs
+	number of concurrent compilation jobs. Defaults to the number of physical
+	CPU cores.
+
 --lazy-check
 	by default, any package that had one or more files modified after it has
 	been last built will be built again. That includes any file inside a 
@@ -139,7 +144,7 @@ ParseCommandLine()
 	      		PrintUsage;
 	      		exit 0;
 	      	;;
-	      	-j=*)
+	      	-j=*|--jobs=*)
 	      		_npp="${i#*=}"
 			;;
 	      	--lazy-check)

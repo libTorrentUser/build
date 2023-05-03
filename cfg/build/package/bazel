@@ -39,7 +39,7 @@ PackageBuild()
 	local buildDir="$1";
 	local prefix="$2";
 	local destDir="$3";
-	#local npp="$4";
+	local npp="$4";
 	local dirBin="$5";
 	
 	local package='bazel';
@@ -95,8 +95,18 @@ PackageBuild()
 	if [ $? -ne 0 ]; then
 		Die 'patching of hardcoded bash paths failed';
 	fi
+
 	
 	Log 'Building bazel to build bazel...'
+	
+	local workDir="$buildDir/work";
+	if [ -e "$workDir" ]; then
+		DieIfFails chmod -R +w "$workDir"
+		DieIfFails DeleteAllFiles "$workDir";
+	fi
+
+	# log the current env cars
+	printf '\n%s\n\n' "$(printenv | sort)";
 
 	# EXTRA_BAZEL_ARGS is a var you can use to pass aditional args (ha!) to 
 	# bazel during the bootstrapping process.
@@ -120,13 +130,6 @@ PackageBuild()
 	#
 	# _LARGEFILE64_SOURCE must be defined on musl or the type off64_t won't be
 	# defined.
-	local workDir="$buildDir/work";
-	if [ -e "$workDir" ]; then
-		DieIfFails DeleteAllFiles "$workDir";
-	fi
-
-	# log the current env cars
-	printf '\n%s\n\n' "$(printenv | sort)";
 
 	DieIfFails cd "$sourceDir";
 
@@ -139,6 +142,7 @@ PackageBuild()
 			--host_copt=-Wno-error=undef \
 			--host_copt=-D_LARGEFILE64_SOURCE \
 			--copt=-D_LARGEFILE64_SOURCE \
+			--jobs=$npp \
 			" \
 		DieIfFails bash './compile.sh';
 		
@@ -146,9 +150,12 @@ PackageBuild()
 
 
 	Log 'Manually installing...';
-	local finalDir="${destDir}${prefix}";
-	local finalDirBin="${finalDir}/bin";
-	DieIfFails mkdir -p "${finalDirBin}";
-	DieIfFails DeleteAllFiles "${finalDir}";
-	DieIfFails cp "${sourceDir}/output/bazel"	"${finalDirBin}/";
+
+	if [ -e "${destDir}" ]; then
+		DieIfFails DeleteAllFiles "${destDir}/";
+	fi
+
+	local destDirBin="${destDir}${prefix}/bin";	
+	DieIfFails mkdir -p "${destDirBin}";	
+	DieIfFails cp "${sourceDir}/output/bazel" "${destDirBin}/";
 }
