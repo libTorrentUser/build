@@ -30,7 +30,7 @@ PackageRuntimeDependencies()
 
 PackageWarnings()
 {
-	return 0;
+	printf 'DO NOT STRIP bazel!!!!! (see https://github.com/bazelbuild/bazel/issues/600). Also, at least until v6.1.2 it was not possible to build bazel with LTO. bazel sucks';
 }
 
 
@@ -150,6 +150,9 @@ PackageBuild()
 
 
 	Log 'Manually installing...';
+
+	# REMEMBER!!!! Do not strip the binary!!!!
+	# https://github.com/bazelbuild/bazel/issues/600
 
 	if [ -e "${destDir}" ]; then
 		DieIfFails DeleteAllFiles "${destDir}/";
