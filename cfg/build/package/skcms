@@ -46,7 +46,7 @@ PackageBuild()
 
 	DieIfFails cd "$sourceDir";
 	
-	DieIfFails bazel build;
+	DieIfFails bazel --batch build skcms;
 
 	DieIfFails cd -;
 	
