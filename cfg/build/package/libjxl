@@ -1,0 +1,116 @@
+#!/bin/sh
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+brotli
+cmake
+highway
+make
+libpng
+zlib
+';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageWarnings()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+	
+	local package='libjxl';
+
+	local sourceDir;
+	sourceDir=$(./latest.sh \
+		--package="${package}/${package}" \
+		--host='github' \
+		--github-regex='tarball_url.*' \
+		-b="$buildDir"
+		);
+
+
+	Log 'Downloading dependencies'
+	# instead of running the deps.sh script, get only dependencies 
+	# we will relly need. We could download the latest release from those and
+	# extract them at the dir libjxl wants, but I'm afraid there might be some
+	# sort of incompatibility, so I'll use the recommended commit
+	local depHash;
+	depHash=$(sed -n 's;THIRD_PARTY_SKCMS="\([^"]*\)";\1;p' "$sourceDir/deps.sh");
+	if [ $? -ne 0 ] || [ -z "$depHash" ]; then
+		Die 'unable to retrieve dependency commit hash';
+	fi
+
+	local depTarDownloadDir="$buildDir/tmp";
+	local depTarName='skcms.tar.gz';
+	DieIfFails Download \
+		"https://skia.googlesource.com/skcms/+archive/${depHash}.tar.gz" \
+		"$depTarDownloadDir" \
+		"$depTarName";
+
+	local depSourceDir="${sourceDir}/third_party/skcms";
+	DieIfFails mkdir -p "$depSourceDir";
+
+	local depTarPath="${depTarDownloadDir}/${depTarName}";
+	DieIfFails tar -C "$depSourceDir" -xf "$depTarPath";
+	DieIfFails rm "$depTarPath";
+
+	
+				#-DJPEGXL_ENABLE_SJPEG=OFF \
+				#-DJPEGXL_ENABLE_SKCMS=OFF \
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--cmd-configure='cmake' \
+		--configure-options="\
+			-D BUILD_SHARED_LIBS=OFF \
+			-D BUILD_TESTING=OFF \
+			-D CMAKE_BUILD_TYPE=Release \
+			-D CMAKE_INSTALL_PREFIX=$prefix \
+			-D JPEGXL_ENABLE_BENCHMARK=OFF \
+			-D JPEGXL_ENABLE_COVERAGE=OFF \
+			-D JPEGXL_ENABLE_EXAMPLES=OFF \
+			-D JPEGXL_ENABLE_SJPEG=OFF \
+			-D JPEGXL_ENABLE_PLUGINS=ON \
+			-D JPEGXL_ENABLE_PLUGIN_GIMP210=OFF \
+			-D JPEGXL_ENABLE_VIEWERS=OFF \
+			-D JPEGXL_FORCE_SYSTEM_BROTLI=ON \
+			" \
+		--dest-dir="$destDir" \
+		--install-options="install-strip";
+
+		
+				
+				
+				
+				
+				
+				
+				
+
+	local pkgconfigDir="$dirBin/pkgconfig";
+
+	DieIfFails ./adjust-pkgconfig.sh \
+		-d="$destDir" \
+		--prefix="$prefix" \
+		-o="$pkgconfigDir";
+
+}
