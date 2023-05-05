@@ -1,4 +1,4 @@
 #!/bin/sh
 
 # see ./gcc for more info about the arguments (or, better yet, gcc docs)
-/usr/bin/g++ -static "$@" -g0 -march=native -mtune=native -flto=auto -O3
+/usr/bin/g++ -static "$@" -g0 -fomit-frame-pointer -march=native -mtune=native -flto=auto -O3

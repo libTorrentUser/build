@@ -4,14 +4,20 @@ source script.lib.sh
 
 
 
+
+
+
 PackageBuildDependencies()
 {
 	printf '
 brotli
 cmake
+giflib
 highway
 make
+libjpeg-turbo
 libpng
+libwebp
 zlib
 ';
 }
@@ -26,6 +32,45 @@ PackageRuntimeDependencies()
 PackageWarnings()
 {
 	return 0;
+}
+
+
+DownloadDependency()
+{
+	local depName="$1";
+
+	local depNameUpper=$(printf '%s' "$depName" | tr '[:lower:]' '[:upper:]');
+	
+	local depHash;
+	depHash=$(sed -n 's;THIRD_PARTY_'"$depNameUpper"'="\([^"]*\)";\1;p' "$sourceDir/deps.sh");
+	if [ $? -ne 0 ] || [ -z "$depHash" ]; then
+		Die 'unable to retrieve dependency commit hash';
+	fi
+
+	local depTarDownloadDir="$buildDir/tmp";
+	local depTarName="${depName}.tar.gz";
+
+	local url=;
+	case "$depName" in
+		skcms)
+			url="https://skia.googlesource.com/skcms/+archive/${depHash}.tar.gz";
+		;;
+		*)
+			url="https://github.com/${project}/tarball/${sha}";
+		;;
+	esac
+	
+	DieIfFails Download \
+		"https://skia.googlesource.com/skcms/+archive/${depHash}.tar.gz" \
+		"$depTarDownloadDir" \
+		"$depTarName";
+
+	local depSourceDir="${sourceDir}/third_party/skcms";
+	DieIfFails mkdir -p "$depSourceDir";
+
+	local depTarPath="${depTarDownloadDir}/${depTarName}";
+	DieIfFails tar -C "$depSourceDir" -xf "$depTarPath";
+	DieIfFails rm "$depTarPath";
 }
 
 
@@ -73,9 +118,21 @@ PackageBuild()
 	DieIfFails tar -C "$depSourceDir" -xf "$depTarPath";
 	DieIfFails rm "$depTarPath";
 
+
+	# CMAKE will only find packages installed in non-standard locations if we pass
+	# where they are in CMAKE_PREFIX_PATH. But there is a catch, it expects the
+	# paths to be the directory containing the /bin /lib etc subdirs. If the stuff
+	# is under a prefix like, for instance, /usr, as in /usr/bin or /usr/lib, then 
+	# you must append the /usr prefix to the paths
+	packageSearchPath=;
+	if [ $(CountItems "${destDir}/") -gt 0 ]; then
+		for d in "${destDir}/"*; do
+			packageSearchPath="${packageSearchPath}${packageSearchPath:+:}${d}/usr"
+		done
+	fi
 	
-				#-DJPEGXL_ENABLE_SJPEG=OFF \
-				#-DJPEGXL_ENABLE_SKCMS=OFF \
+	# JPEGXL_STATIC
+	# Build tools as static binaries.
 	DieIfFails ./make.sh \
 		-b="$buildDir" \
 		-s="$sourceDir" \
@@ -85,17 +142,24 @@ PackageBuild()
 			-D BUILD_TESTING=OFF \
 			-D CMAKE_BUILD_TYPE=Release \
 			-D CMAKE_INSTALL_PREFIX=$prefix \
+			-D CMAKE_PREFIX_PATH=$packageSearchPath \
 			-D JPEGXL_ENABLE_BENCHMARK=OFF \
 			-D JPEGXL_ENABLE_COVERAGE=OFF \
+			-D JPEGXL_ENABLE_DOXYGEN=OFF \
 			-D JPEGXL_ENABLE_EXAMPLES=OFF \
+			-D JPEGXL_ENABLE_MANPAGES=OFF \
+			-D JPEGXL_ENABLE_PROFILER=OFF \
 			-D JPEGXL_ENABLE_SJPEG=OFF \
 			-D JPEGXL_ENABLE_PLUGINS=ON \
 			-D JPEGXL_ENABLE_PLUGIN_GIMP210=OFF \
 			-D JPEGXL_ENABLE_VIEWERS=OFF \
 			-D JPEGXL_FORCE_SYSTEM_BROTLI=ON \
+			-D JPEGXL_FORCE_SYSTEM_HWY=ON \
+			-D JPEGXL_STATIC=ON \
+			-D JPEGXL_TEST_TOOLS=OFF \
 			" \
 		--dest-dir="$destDir" \
-		--install-options="install-strip";
+		--install-options="install/strip";
 
 		
 				

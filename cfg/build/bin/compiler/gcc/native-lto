@@ -17,4 +17,4 @@
 # note: you add the flag "-frecord-gcc-switches" and then use 
 # "readelf -p '.GCC.command.line' someExec" in order to see if these flags were
 # really used
-/usr/bin/gcc "$@" -g0 -march=native -mtune=native -flto=1
+/usr/bin/gcc "$@" -g0 -fomit-frame-pointer -march=native -mtune=native -flto=1
