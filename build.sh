@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# finally part of POSIX
+set -o pipefail
+
 _scriptPath=$(readlink -f "$0");
 _scriptDir=$(dirname "$_scriptPath");
 
@@ -11,6 +14,7 @@ _compilerFlagsAdd='native-lto';
 _deleteSources=;
 _dirConfig="${_scriptDir}/cfg/build";
 _dirBin=;
+_dirRoot=;
 _lazyCheck=;
 _linker='ld.bfd';
 _linkerFlags='none';
@@ -405,6 +409,13 @@ Initialize()
 	_warningsFile="${_buildDir}/warnings.txt";
 	DieIfFails rm -f "$_warningsFile";
 
+	# this will be a fake root file system containing symlinks to every file
+	# a package would install. This is done so tools like cmake, which seems to
+	# ignore PKG_CONFIG_PATH and other commonly used env vars, can locate stuff
+	# without us having to pass the directories of every single package to it
+	_dirRoot="${_buildDir}/r";
+	DieIfFails mkdir -p "$_dirRoot";
+
 	# override cc, c++, gcc, etc with scripts that enforce or disable 
 	# optimizations
 	InitializeCompilers;
@@ -687,6 +698,54 @@ DependencySetContains()
 }
 
 
+# LinkPackgeToRoot "$packageDestDir" 
+#
+# creates symlinks for the package files into our root dir
+LinkPackgeToRoot()
+{
+	local packageDestDir="$1";
+
+	# do this inside a sub-shell in order to avoid having to worry about 
+	# returning to the directory we were in
+	$(
+		DieIfFails cd "$_dirRoot";
+		
+		DieIfFails find "$packageDestDir" -type f -print0 | \
+			xargs -0 -n 1 -I {} sh -c '
+				packageDestDir="$1";
+				packageFilePath="$2";
+
+				# remove $packageDestDir from $packageFilePath so
+				# build/d/make/usr/bin/make 
+				# becomes 
+				# usr/bin/make
+				linkFilePath="${packageFilePath#$packageDestDir}";
+
+				# ensure no leading slash remains, otherwise the commands below
+				# would try to create stuff in the real system root
+				linkFilePath="$(printf "%s" "$linkFilePath" | sed "s;^/*;;")"
+
+				mkdir -p "$(dirname "$linkFilePath")" || exit 1;			
+
+				# create a link named 
+				# build/r/usr/bin/make
+				# pointing to
+				# build/d/make/usr/bin/make 
+				ln -sf "$packageFilePath" "$linkFilePath" || exit 1;
+				
+				' dummy "$packageDestDir" {};
+
+		# note: this check is to detect errors in the xargs call. It requires 
+		# "set -o pipefail" to work
+		if [ $? -ne 0 ]; then
+			Die 'something went wrong in the call to xargs';
+		fi
+	);
+
+	if [ $? -ne 0 ]; then
+		Die 'unable to link package to root dir';
+	fi
+}
 
 
 Build()
@@ -771,11 +830,15 @@ ERROR: cyclic dependency detected on package "'"$package"'"';
 			"$_prefix" \
 			"$packageDestDir" \
 			"$_npp" \
-			"$_dirBin" > "$logFile" 2>&1 )
+			"$_dirBin" \
+			"$_dirRoot" > "$logFile" 2>&1 )
 			
 		if [ $? -ne 0 ]; then
 			Die 'build failed! Check the log file "'"$logFile"'"';
 		fi
+
+		# create symlinks for the generated files into our root dir
+		DieIfFails LinkPackgeToRoot "$packageDestDir";		
 
 		# flag the package as OK
 		DieIfFails SetPackageOK "$package"
