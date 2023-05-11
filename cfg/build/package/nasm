@@ -25,15 +25,19 @@ PackageBuild()
 	local package='nasm';
 
 	local content=$(Download 'https://www.nasm.us');
+	
 	local dirURL=;
-	dirURL=$( \
-		printf '%s' "$content" | \
-		grep -o 'http://.*/releasebuilds/[^\?][^"]*' | \
+	dirURL=$( 
+		printf '%s' "$content" | 
+		grep -o 'http://.*/releasebuilds/[^?][^"]*' | 
 		head -n 1
 		);
 
-	if [ $? -ne 0  ] || [ -z "$dirURL" ]; then
-		Die "unable to retrieve the latest version directory url";
+	if [ -z "$dirURL" ]; then	
+		Die 'unable to retrieve the latest version directory url
+		
+content:
+'"$content";		
 	fi	
 	
 
@@ -57,7 +61,7 @@ PackageBuild()
 		fi;
 	done
 
-	if [ $? -ne 0  ] || [ -z "$tarName" ]; then
+	if [ -z "$tarName" ]; then
 		Die 'unable to retrieve the latest version url
 
 content:

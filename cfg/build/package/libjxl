@@ -42,6 +42,7 @@ PackageBuild()
 	local destDir="$3";
 	#local npp="$4";
 	local dirBin="$5";
+	local dirRoot="$6";
 	
 	local package='libjxl';
 
@@ -85,12 +86,13 @@ PackageBuild()
 	# paths to be the directory containing the /bin /lib etc subdirs. If the stuff
 	# is under a prefix like, for instance, /usr, as in /usr/bin or /usr/lib, then 
 	# you must append the /usr prefix to the paths
-	packageSearchPath=;
-	if [ $(CountItems "${destDir}/") -gt 0 ]; then
-		for d in "${destDir}/"*; do
-			packageSearchPath="${packageSearchPath}${packageSearchPath:+:}${d}/usr"
-		done
-	fi
+	#packageSearchPath=;
+	#if [ $(CountItems "${destDir}/") -gt 0 ]; then
+	#	for d in "${destDir}/"*; do
+	#		packageSearchPath="${packageSearchPath}${packageSearchPath:+:}${d}/usr"
+	#	done
+	#fi
+	local packageSearchPath="${_dirRoot}/${prefix}";
 	
 	# JPEGXL_STATIC
 	# Build tools as static binaries.
