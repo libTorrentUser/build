@@ -23,7 +23,7 @@ PackageRuntimeDependencies()
 
 PackageWarnings()
 {
-	return 0;
+	printf 'fix me: the configure command is passing a hardcoded string to --host\n';
 }
 
 
@@ -60,13 +60,16 @@ PackageBuild()
 	DieIfFails "./bootstrap";
 	DieIfFails cd -;
 
-	
+	# the configure script seems to very... bogus. If you do not set 
+	# --build or --host, it will say that libtool cannot build shared libs
+	# and will not build shared libs
 	DieIfFails ./make.sh \
 		-b="$buildDir" \
 		-s="$sourceDir" \
 		--configure-options="\
 			--prefix=$prefix \
 			--build=x86_64 \
+			--host=x86_64-alpine-linux-musl \
 			" \
 		--dest-dir="$destDir" \
 		--install-options="install-strip";
