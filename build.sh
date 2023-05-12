@@ -701,7 +701,7 @@ DependencySetContains()
 # LinkPackgeToRoot "$packageDestDir" 
 #
 # creates symlinks for the package files into our root dir
-LinkPackgeToRoot()
+LinkPackageToRoot()
 {
 	local packageDestDir="$1";
 
@@ -710,7 +710,7 @@ LinkPackgeToRoot()
 	$(
 		DieIfFails cd "$_dirRoot";
 		
-		DieIfFails find "$packageDestDir" -type f -print0 | \
+		DieIfFails find "$packageDestDir" -type f -o -type l -print0 | \
 			xargs -0 -n 1 -I {} sh -c '
 				packageDestDir="$1";
 				packageFilePath="$2";
@@ -838,7 +838,7 @@ ERROR: cyclic dependency detected on package "'"$package"'"';
 		fi
 
 		# create symlinks for the generated files into our root dir
-		DieIfFails LinkPackgeToRoot "$packageDestDir";		
+		DieIfFails LinkPackageToRoot "$packageDestDir";		
 
 		# flag the package as OK
 		DieIfFails SetPackageOK "$package"
