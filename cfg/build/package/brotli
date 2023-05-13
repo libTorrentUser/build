@@ -23,7 +23,7 @@ PackageRuntimeDependencies()
 
 PackageWarnings()
 {
-	printf 'fix me: the configure command is passing a hardcoded string to --host\n';
+	printf 'v1.0.9 configure script seems to be unable to detect the correct values for its --build and --host options. And if those are set incorrectly the build fails or not everything gets built. Currently we manually calling config.guess to set those values\n';
 }
 
 
@@ -63,13 +63,21 @@ PackageBuild()
 	# the configure script seems to very... bogus. If you do not set 
 	# --build or --host, it will say that libtool cannot build shared libs
 	# and will not build shared libs
+	local cfgHost=;
+	cfgHost=$("${sourceDir}/config.guess"); 
+	if [ $? -ne 0 ] || [ -z "$cfgHost" ]; then
+		Die "call to config.guess failed";
+	fi
+
+	local cfgBuild="${cfgHost%%-*}";
+	
 	DieIfFails ./make.sh \
 		-b="$buildDir" \
 		-s="$sourceDir" \
 		--configure-options="\
 			--prefix=$prefix \
-			--build=x86_64 \
-			--host=x86_64-alpine-linux-musl \
+			--build=$cfgBuild \
+			--host=$cfgHost \
 			" \
 		--dest-dir="$destDir" \
 		--install-options="install-strip";
