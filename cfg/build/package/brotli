@@ -27,8 +27,11 @@ PackageWarnings()
 }
 
 
-PackageBuild()
+PackageBuild_Brotli()
 {
+	local withPIC="$1";
+	shift;
+
 	local buildDir="$1";
 	local prefix="$2";
 	local destDir="$3";
@@ -78,6 +81,7 @@ PackageBuild()
 			--prefix=$prefix \
 			--build=$cfgBuild \
 			--host=$cfgHost \
+			$withPIC \
 			" \
 		--dest-dir="$destDir" \
 		--install-options="install-strip";
@@ -88,4 +92,10 @@ PackageBuild()
 		-d="$destDir" \
 		--prefix="$prefix" \
 		-o="$pkgconfigDir";
+}
+
+
+PackageBuild()
+{
+	PackageBuild_Brotli '' "$@";
 }

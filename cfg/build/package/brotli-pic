@@ -1,0 +1,11 @@
+#!/bin/sh
+
+source script.lib.sh
+
+source ../package/brotli
+
+
+PackageBuild()
+{
+	PackageBuild_Brotli '--with-pic' "$@";
+}

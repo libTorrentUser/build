@@ -10,7 +10,7 @@ source script.lib.sh
 PackageBuildDependencies()
 {
 	printf '
-brotli
+brotli-pic
 cmake
 giflib
 highway
@@ -79,6 +79,10 @@ PackageBuild()
 	local depTarPath="${depTarDownloadDir}/${depTarName}";
 	DieIfFails tar -C "$depSourceDir" -xf "$depTarPath";
 	DieIfFails rm "$depTarPath";
+
+
+	#apply all patches
+	DieIfFails ./patch.sh "$package" "$sourceDir";
 
 
 	# CMAKE will only find packages installed in non-standard locations if we pass

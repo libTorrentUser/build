@@ -710,7 +710,7 @@ LinkPackageToRoot()
 	$(
 		DieIfFails cd "$_dirRoot";
 		
-		DieIfFails find "$packageDestDir" -type f -o -type l -print0 | \
+		DieIfFails find "$packageDestDir" \( -type f -o -type l \) -print0 | \
 			xargs -0 -n 1 -I {} sh -c '
 				packageDestDir="$1";
 				packageFilePath="$2";
