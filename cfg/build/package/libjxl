@@ -1,10 +1,11 @@
 #!/bin/sh
 
+# this package will build only libjxl and its tools while using the latest
+# version of each dependent packge. You can use the package libjxl-bundled to
+# build using the exact versions that were used when a libjxl release was 
+# created
+
 source script.lib.sh
-
-
-
-
 
 
 PackageBuildDependencies()
@@ -96,6 +97,9 @@ PackageBuild()
 	#		packageSearchPath="${packageSearchPath}${packageSearchPath:+:}${d}/usr"
 	#	done
 	#fi
+
+	# instead of all that complication we can (now) simply use our "fake" sys
+	# root dir
 	local packageSearchPath="${_dirRoot}/${prefix}";
 	
 	# JPEGXL_STATIC
@@ -127,14 +131,6 @@ PackageBuild()
 			" \
 		--dest-dir="$destDir" \
 		--install-options="install/strip";
-
-		
-				
-				
-				
-				
-				
-				
 				
 
 	local pkgconfigDir="$dirBin/pkgconfig";

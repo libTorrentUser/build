@@ -268,7 +268,7 @@ InitializeCompilers()
 
 		# gnu make defaults CC to cc. So we must override that too		
 		DieIfFails ln -s "${_dirBin}/${_compilerC}" "${_dirBin}/cc" 
-		DieIfFails ln -s "${_dirBin}/${_compilerCXX}" "${_dirBin}/c++" 
+		DieIfFails ln -s "${_dirBin}/${_compilerCXX}" "${_dirBin}/c++"
 
 		# same for the non-lto copies. This way build scripts can just set CC to
 		# cc-no.lto.
@@ -276,6 +276,12 @@ InitializeCompilers()
 		DieIfFails ln -s "${_dirBin}/${_compilerCXX}-no.lto" "${_dirBin}/c++-no.lto";
 		DieIfFails ln -s "${_dirBin}/${_compilerC}-lto.partition.none" "${_dirBin}/cc-lto.partition.none";
 		DieIfFails ln -s "${_dirBin}/${_compilerCXX}-lto.partition.none" "${_dirBin}/c++-lto.partition.none";
+
+		CC="${_dirBin}/cc";
+		export CC;
+
+		CXX="${_dirBin}/c++";
+		export CXX;
 
 		printf 'dir-config="%s"
 cc=%s
@@ -311,6 +317,9 @@ InitializeLinker()
 		
 		# some tools default the linker to "ld", so we have to override that too
 		DieIfFails ln -s "${_dirBin}/${_linker}" "${_dirBin}/ld"
+
+		LD="${_dirBin}/ld";
+		export LD;
 
 		printf 'ld=%s (flags=%s)\n' "$_linker" "$_linkerFlags";
 	fi

@@ -54,6 +54,7 @@ PackageBuild()
 	# and finally, we have to use the newly compiled make to install make.
 
 	Log 'Configuring...';
+	printf '%s\n' "$(printenv | sort)";
 	local objDir="${buildDir}/obj";
 	DieIfFails mkdir -p "$objDir";
 	DieIfFails DeleteAllFiles "$objDir";

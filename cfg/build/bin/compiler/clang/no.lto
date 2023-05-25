@@ -1,7 +1,3 @@
 #!/bin/sh
 
-# same as the gcc script (see the comments there for more info), but without the
-# -flto flag. Because it might break some configure scripts that do things that
-# they shouldn't be doing and were bound to break (like Python v10.x detection
-# of float word ordering)
-/usr/bin/clang "$@" -g0 -mtune=native -march=native -fuse-ld=lld
+/usr/bin/clang "$@" -g0 -mtune=native -march=native

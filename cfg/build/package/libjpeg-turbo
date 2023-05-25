@@ -3,6 +3,18 @@
 source script.lib.sh
 
 
+CompilerIsClang()
+{	
+	case "$(readlink -f $CC)" in
+		*clang)
+		return 0;
+		;;
+	esac
+
+	return 1;
+}
+
+
 
 PackageBuildDependencies()
 {
@@ -16,6 +28,14 @@ nasm
 PackageRuntimeDependencies()
 {
 	return 0;
+}
+
+
+PackageWarnings()
+{
+	if CompilerIsClang; then
+		printf 'cmake build detected. Position independent code was forced otherwise the build would fail';
+	fi
 }
 
 
@@ -44,15 +64,24 @@ PackageBuild()
 	LogErr "configuring..."
 
 	local objDir="$buildDir/obj";
-	
+
+	local flagPIC='OFF';
+	if CompilerIsClang; then		
+		flagPIC='ON';
+	fi
+
+	LD="$LD" \
 	DieIfFails cmake \
 		-S "$sourceDir" \
 		-B "$objDir" \
 		-DCMAKE_INSTALL_PREFIX=$prefix \
 		-DCMAKE_INSTALL_LIBDIR="${prefix}/lib" \
         -DCMAKE_BUILD_TYPE=Release \
-        -DWITH_JPEG8=ON;
+        -DWITH_JPEG8=ON \
+        -DCMAKE_POSITION_INDEPENDENT_CODE="$flagPIC" \
+        ;
 
+	LD="$LD" \
 	DieIfFails ./make.sh \
 		-b="$buildDir" \
 		-s="$sourceDir" \

@@ -1,0 +1,5 @@
+#!/bin/sh
+
+# I belieave only -flto=thin works in parallel. But we specify -flto-jobs just 
+# to be sure
+/usr/bin/clang++ "$@" -g0 -fomit-frame-pointer -march=native -mtune=native -flto-jobs=1 -flto=full -O3

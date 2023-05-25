@@ -1,0 +1,116 @@
+#!/bin/sh
+
+# this package will build libjxl and its tools and also some of its 
+# dependencies. The dependencies are downloading using a script that comes with
+# the source file. That script will download specific versions of those 
+# dependencies, the versions that were used when the release was created. If you
+# want to use the latest version of those dependencies you can use the "libjxl"
+# package instead.
+
+
+source script.lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+bash
+cmake
+curl
+giflib
+git
+libjpeg-turbo
+libpng
+libwebp
+';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageWarnings()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+	local dirRoot="$6";
+	
+	local package='libjxl';
+
+	local sourceDir;
+	sourceDir=$(./latest.sh \
+		--package="${package}/${package}" \
+		--host='github' \
+		--github-regex='tarball_url.*' \
+		-b="$buildDir"
+		);
+
+
+	Log 'Downloading dependencies'
+	DieIfFails cd "$sourceDir";
+	DieIfFails "$sourceDir/deps.sh"
+	DieIfFails cd -;
+
+	# since we are building a static jpegxl, zlib CMake stuff needs to be 
+	# edited otherwise it would try to static link with zlib.so instead of
+	# zlib.a
+	DieIfFails sed -i 's;\(target_link_libraries([^ ]* \)zlib);\1zlibstatic);' "$sourceDir/third_party/zlib/CMakeLists.txt";
+
+
+	# pass our fake sys root so the configure script can locate the dependencies
+	local packageSearchPath="${_dirRoot}/${prefix}";
+	
+	# JPEGXL_STATIC
+	# Build tools as static binaries.
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--in-source \
+		--cmd-configure='cmake' \
+		--configure-options="\
+			-D BUILD_SHARED_LIBS=OFF \
+			-D BUILD_TESTING=OFF \
+			-D CMAKE_BUILD_TYPE=Release \
+			-D CMAKE_INSTALL_PREFIX=$prefix \
+			-D CMAKE_PREFIX_PATH=$packageSearchPath \
+			-D JPEGXL_BUNDLE_LIBPNG=true \
+			-D JPEGXL_BUNDLE_SKCMS=true \
+			-D JPEGXL_ENABLE_BENCHMARK=OFF \
+			-D JPEGXL_ENABLE_COVERAGE=OFF \
+			-D JPEGXL_ENABLE_DOXYGEN=OFF \
+			-D JPEGXL_ENABLE_EXAMPLES=OFF \
+			-D JPEGXL_ENABLE_MANPAGES=OFF \
+			-D JPEGXL_ENABLE_PROFILER=OFF \
+			-D JPEGXL_ENABLE_SJPEG=OFF \
+			-D JPEGXL_ENABLE_PLUGINS=ON \
+			-D JPEGXL_ENABLE_PLUGIN_GIMP210=OFF \
+			-D JPEGXL_ENABLE_VIEWERS=OFF \
+			-D JPEGXL_STATIC=ON \
+			-D JPEGXL_TEST_TOOLS=OFF \
+			" \
+		--dest-dir="$destDir" \
+		--install-options="install/strip";
+
+				
+
+	local pkgconfigDir="$dirBin/pkgconfig";
+
+	DieIfFails ./adjust-pkgconfig.sh \
+		-d="$destDir" \
+		--prefix="$prefix" \
+		-o="$pkgconfigDir";
+
+}

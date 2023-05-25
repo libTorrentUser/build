@@ -1,0 +1,3 @@
+#!/bin/sh
+
+/usr/bin/clang++ "$@" -g0 -fomit-frame-pointer -march=native -mtune=native -flto=auto -O3

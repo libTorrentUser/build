@@ -81,8 +81,23 @@ content:
 		Die "unable to download the latest version tar";
 	fi
 
+	# nasm configure script gets lost when the env var CC is set to something
+	# and --enable-lto is used. When that happens it won't set AR nor RANLIB.
+	if [ -z "$CC_AR" ]; then
+		CC_AR="$AR";
+		if [ -z "$CC_AR" ]; then
+			CC_AR=$(command -v ar);
+		fi
+	fi
+
+	if [ -z "$CC_RANLIB" ]; then
+		CC_RANLIB="$RANLIB"
+		if [ -z "$CC_RANLIB" ]; then
+			CC_RANLIB=$(command -v ranlib);
+		fi
+	fi
 		
-	DieIfFails ./make.sh \
+	CC_AR="$CC_AR" CC_RANLIB="$CC_RANLIB" DieIfFails ./make.sh \
 		-b="$buildDir" \
 		-s="$sourceDir" \
 		--in-source \
