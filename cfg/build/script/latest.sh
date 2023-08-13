@@ -220,12 +220,11 @@ Scan()
 	for ext in $_tarExtensions; do
 		# search for a tar with the current extension. The first grep here has
 		# a double quote char (") in the end in order to not mistakenly match
-		# similar extensions, like bz and bz2. 
+		# similar extensions, like bz and bz2. 		
 		local tarName;		
 		tarName=$( \
 			printf '%s' "$content" | \
-			grep -o "${_package}-"'[^"]*\.'"$ext"'"' | \
-			grep -v "${_package}-latest.*" | \
+			grep -o "${_package}"'[^"]*\.'"$ext"'"' | \
 			grep -v 'rc' | \
 			sed 's;\([^"]*\)";\1;' | \
 			sort -V | \

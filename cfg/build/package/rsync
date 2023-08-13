@@ -36,10 +36,14 @@ PackageBuild()
 
 	local sourceDir;
 	sourceDir=$(./latest.sh \
-		--package="$package" \
-		--url='https://download.samba.org/pub/rsync/src' \
+		--package="${package}-[0-9]\+" \
+		--url='https://download.samba.org/pub/rsync/src/' \
 		-b="$buildDir"
 		);
+
+	if [ -z "$sourceDir" ]; then
+		Die 'Unable to retrieve the latest source code';
+	fi
 	
 	DieIfFails ./make.sh \
 		-b="$buildDir" \

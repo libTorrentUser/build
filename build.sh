@@ -18,6 +18,11 @@ _dirRoot=;
 _lazyCheck=;
 _linker='ld.bfd';
 _linkerFlags='none';
+_log=;
+_logLines=5;
+_logInterval=5;
+_logKeepGoingInterval=1;
+_logStyle='clip';
 _overrideCompiler=1;
 _overrideLinker=1;
 _prefix='/usr';
@@ -32,12 +37,13 @@ _npp=;
 _packagesAddedToSearchPaths=;
 _warningsFile=;
 
+# this "global" is used by the callback passed to the log view in order to
+# check if the build process is done and we can stop showing the log
+_buildProcessID=;
 
-source /usr/local/bin/script.lib.sh
 
-
-
-
+#  "source" these libs
+. /usr/local/bin/script.lib.sh
 
 
 PrintUsage()
@@ -47,12 +53,12 @@ PrintUsage()
 this script will download the latest version of {package} and all its 
 dependencies and build them. You can pass more than one package if you wish.
 
--b
---build-dir
+-b=
+--build-dir=
 	directory where the source code will be downloaded to and built.
 
---compiler-c
---compiler-cxx
+--compiler-c=
+--compiler-cxx=
 	select the compiler. Can be anything inside {--dir-config/bin/compiler) 
 
 --compiler-flags-add
@@ -64,20 +70,20 @@ dependencies and build them. You can pass more than one package if you wish.
 	Note? the script with the flags must exist on both dirs, since it will be 
 	used by both the C and the C++ compiler.
 	
--d
---dest-dir
+-d=
+--dest-dir=
 	directory where binaries will be installed to (make DESTDIR=dir install)
 
 --delete-sources
 	delete all source and intermediate files after a successful build. This flag
 	automaticaly sets --lazy-check.
 
---dir-config
+--dir-config=
 	directory where the configuration files are located. The default is
 	"cfg/build"
 
--j
---jobs
+-j=
+--jobs=
 	number of concurrent compilation jobs. Defaults to the number of physical
 	CPU cores.
 
@@ -91,20 +97,52 @@ dependencies and build them. You can pass more than one package if you wish.
 	to have been built and is perfectly fine. This flag is always set if
 	--delete-sources is used.
 
---linker
+--linker=
 	select the linker you want to use. Anything inside 
 	"{--dir-config}/bin/linker/" is valid.
 
---linker-flags
+--linker-flags=
 	select a script that will force aditional flags to be passed to the linker
 	on every invocation. Anuthing inside "{--dir-config}/bin/linker/{--linker}/"
 	is valid.
 
---prefix
+--log
+	displays the last lines of the log of the package that is currently being
+	built. Disabled by default because you will usualy be using every single bit
+	of processing power to compile code and, although not extremely significant,
+	showing the log requires a couple of precious cycles.
+	
+--log-interval=
+	how many seconds to wait between each --log update. Beware that, no matter
+	what value you use here, the actual interval will always be a multiple of 
+	--log-keepgoinginterval. Defaults to '"$_logInterval"'.
+
+--log-keepgoinginterval=
+	how many seconds to wait between each check to see if the build is done and,
+	therefore, there is no reason to show --log anymore and we can move on to
+	the next package. Since this is/should be a more lightweight operation, this
+	is the value the log view actualy uses to sleep. It waits this many seconds;
+	check if the build is done; check if it is time to update the log; repeat.
+	That is why --log-interval is always a multiple of this value. Defaults to
+	'"$_logInterval"'.
+
+--log-lines=
+	number of lines to show from the end of --log. Defaults to '"$_logLines"'.
+
+--log-style=
+	"clip"
+	    Clip longer lines so they fit the terminal width.
+	"wrap"
+	    Longer lines will wrap to the next line. The log will still show only
+	    --log-lines lines from the log, but they might take more screen space
+	    because of the wrapping.
+	Defaults to '"$_logStyle"'.
+
+--prefix=
 	prefix to be passed to the "configure" command. Prefixes containing spaces
 	are not supported.
 
---no-build
+--no-build=
 	do not build any of these packages.
 
 --no-build-depedencies
@@ -159,6 +197,21 @@ ParseCommandLine()
 			;;
 			--linker-flags=*)
 	      		_linkerFlags="${i#*=}"
+			;;
+			--log)
+	      		_log=1;
+			;;
+			--log-interval=*)
+	      		_logInterval="${i#*=}"
+			;;
+			--log-keepgoinginterval=*)
+	      		_logKeepGoingInterval="${i#*=}"
+			;;
+			--log-lines=*)
+	      		_logLines="${i#*=}"
+			;;
+			--log-style=*)
+	      		_logStyle="${i#*=}"
 			;;
 	      	-p=*|--prefix=*)
 				_prefix="${i#*=}"
@@ -432,6 +485,11 @@ Initialize()
 	# override ld ld.fd ld.gold etc with scripts that enforce or disable
 	# certain flags
 	InitializeLinker;
+
+	# if we are going to show the log, source the lib
+	if [ -n "$_log" ]; then
+		. "${_dirConfig}/script/logview.sh";
+	fi
 }
 
 
@@ -757,6 +815,88 @@ LinkPackageToRoot()
 }
 
 
+# ProcessIsRunning $processID
+#
+# return sucess if the process is still running
+ProcessIsRunning()
+{
+	# https://stackoverflow.com/questions/3043978/how-to-check-if-a-process-id-pid-exists/15774758#15774758
+	# https://stackoverflow.com/a/15774758/1593842
+	# ps -p is not available on busybox, so we have to use the kill solution
+	#kill -0 "$1" > /dev/null 2>&1;
+	kill -0 "$1" 2> /dev/null;
+}
+
+
+# BuildShowingLog
+#    "$logFile" \
+#    "$packageBuildDir" \
+#    "$_prefix" \
+#    "$packageDestDir" \
+#    "$_npp" \
+#    "$_dirBin" \
+#    "$_dirRoot"
+#
+# build the package as a background process and keep showing the last lines of
+# its build log until the build is done
+BuildShowingLog()
+{
+	local logFile="$1";
+	shift;
+
+	# kill child processes if this process is killed
+	# https://stackoverflow.com/questions/360201/how-do-i-kill-background-processes-jobs-when-my-shell-script-exits
+	# https://stackoverflow.com/a/22644006/1593842		
+	trap "exit" INT TERM
+	trap "kill 0" EXIT
+
+	$( PackageBuild "$@" > "$logFile" 2>&1 ) &
+
+	# set this global to the build process ID (the command above) so the 
+	# callback knows when we are done and, therefore, can stop showing the log
+	_buildProcessID="$!";
+
+	KeepGoingCallback()
+	{
+		ProcessIsRunning "$_buildProcessID";
+	}
+
+	sleep "$_logInterval";
+
+	LogView \
+		"$_logStyle" \
+		"$logFile" \
+		"$_logLines" \
+		"$_logInterval" \
+		KeepGoingCallback \
+		"$_logKeepGoingInterval";	
+
+	# unless something goes very wrong, the call to LogView should only return
+	# after the build process is done. But this call is needed in order to 
+	# populate $? and, therefore, check if it succeeded or failed
+	wait "$_buildProcessID";
+}
+
+
+# BuildWithoutShowingLog
+#    "$logFile" \
+#    "$packageBuildDir" \
+#    "$_prefix" \
+#    "$packageDestDir" \
+#    "$_npp" \
+#    "$_dirBin" \
+#    "$_dirRoot"
+#    
+# simply build the package
+BuildWithoutShowingLog()
+{
+	local logFile="$1";
+	shift;
+
+	$( PackageBuild "$@" > "$logFile" 2>&1 );
+}
+
+
 Build()
 {
 	local package="$1";	
@@ -831,16 +971,22 @@ ERROR: cyclic dependency detected on package "'"$package"'"';
 
 		DieIfFails mkdir -p "$packageBuildDir";		
 
-		# if this is not done inside a subshell, the script will just exit in 
-		# case  of an error. Which is what it is supposed to do. But we want to 
-		# tell the user where the log file is before it does so.
-		$( PackageBuild \
-			"$packageBuildDir" \
-			"$_prefix" \
-			"$packageDestDir" \
-			"$_npp" \
-			"$_dirBin" \
-			"$_dirRoot" > "$logFile" 2>&1 )
+		# build the package (pass the arguments as "$@" to avoid repeating them
+		# in the if below
+		set --;
+		set -- "$logFile";
+		set -- "$@" "$packageBuildDir"
+		set -- "$@" "$_prefix"
+		set -- "$@" "$packageDestDir"
+		set -- "$@" "$_npp"
+		set -- "$@" "$_dirBin"
+		set -- "$@" "$_dirRoot"
+		
+		if [ -z "$_log" ]; then
+			BuildWithoutShowingLog "$@";
+		else
+			BuildShowingLog "$@";
+		fi
 			
 		if [ $? -ne 0 ]; then
 			Die 'build failed! Check the log file "'"$logFile"'"';
@@ -896,7 +1042,6 @@ BuildPackages()
 
 	printf 'done!\n';
 }
-
 
 
 ParseCommandLine "$@"
