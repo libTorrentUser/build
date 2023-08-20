@@ -7,9 +7,11 @@ source script.lib.sh
 PackageBuildDependencies()
 {
 	printf '
+autoconf
 automake
 libtool
 make
+pkgconf
 ';
 }
 
@@ -39,7 +41,7 @@ PackageBuild()
 
 	local sourceDir;
 	sourceDir=$(./latest.sh \
-		--host='github-tag' \
+		--host='github' \
 		--package="void-linux/${package}" \
 		-b="$buildDir"
 		);
@@ -53,10 +55,17 @@ PackageBuild()
 	# script. And you must run the stupid bootstrap.sh script from the source
 	# dir. That is why we use a subshell here - so we do not have to worry
 	# about returning to the dir we were
-	$(
+	export PKG_CONFIG="$PKG_CONFIG";
+	export PKG_CONFIG_PATH="$PKG_CONFIG_PATH";
+	#$(
+		#echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH";
 		DieIfFails cd "$sourceDir";
-		DieIfFails "./bootstrap.sh";
-	)
+		DieIfFails "./bootstrap.sh";	
+	#)
+
+	if [ $? -ne 0  ]; then
+		Die 'call to bootstrap.sh failed';
+	fi
 	
 	
 	DieIfFails ./make.sh \

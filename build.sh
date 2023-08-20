@@ -844,9 +844,16 @@ BuildShowingLog()
 	local logFile="$1";
 	shift;
 
-	# kill child processes if this process is killed
+	# save the existing traps, because we are going to modify it here. They
+	# will be restored at the end of this function with
+	# eval "$savedTraps";
+	#
+	# https://www.unix.com/man-page/posix/1posix/trap/
+	local savedTraps=$(trap);
+
+	# kill the whole process group if this process is killed	# 
 	# https://stackoverflow.com/questions/360201/how-do-i-kill-background-processes-jobs-when-my-shell-script-exits
-	# https://stackoverflow.com/a/22644006/1593842		
+	# https://stackoverflow.com/a/22644006/1593842			
 	trap "exit" INT TERM
 	trap "kill 0" EXIT
 
@@ -875,6 +882,13 @@ BuildShowingLog()
 	# after the build process is done. But this call is needed in order to 
 	# populate $? and, therefore, check if it succeeded or failed
 	wait "$_buildProcessID";
+	local exitCode="$?";
+
+	# restore the traps
+	trap - EXIT;
+	eval "$savedTraps";
+
+	return "$exitCode";
 }
 
 

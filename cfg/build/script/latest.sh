@@ -226,10 +226,24 @@ Scan()
 			printf '%s' "$content" | \
 			grep -o "${_package}"'[^"]*\.'"$ext"'"' | \
 			grep -v 'rc' | \
-			sed 's;\([^"]*\)";\1;' | \
-			sort -V | \
-			tail -n 1
-			);
+			sed 's;\([^"]*\)";\1;');
+
+		# now we will have one or more package-#.#.#.#.tar.ext values. Remove 
+		# the extension
+		local tarNameNoExt=;
+		tarNameNoExt=$(printf '%s' "$tarName" | sed 's;\(.*\)\.'"$ext"'$;\1;');
+
+		# now we have package-#.#.#.#.tar (probably.) So remove the ".tar" if it
+		# it exists
+		local tarNameNoTarNoExt;
+		tarNameNoTarNoExt=$(printf '%s' "$tarNameNoExt" | sed 's;\(.*\)\.tar$;\1;');
+
+		# and now we should have only packge-#.#.#.# and that is something that
+		# can be properly sorted with "sort -V"
+		tarNameNoTarNoExt=$(printf '%s' "$tarNameNoTarNoExt" | sort -V | tail -n 1);
+
+		# now restore the .tar.ext part
+		tarName=$(printf '%s' "$tarName" | grep "$tarNameNoTarNoExt");
 
 		# if one was found, remove the extension and compare the version and
 		# keep the latest one stored in {latestVersion} and its extension in
@@ -237,7 +251,12 @@ Scan()
 		if [ ! -z "$tarName" ]; then
 			if [ ! -z "$latestVersion" ]; then
 				# remove the extension
-				local version="${tarName%.$ext}";
+				local version="$tarNameNoTarNoExt";
+				local extPrefix=;
+				case "$tarNameNoExt" in "*.tar")
+					extPrefix='.tar';
+				esac
+				
 
 				# use sort in a very hacky way to compare the two versions and
 				# store the latest in {version}
@@ -250,12 +269,17 @@ Scan()
 				# it is newer
 				if [ "$version" != "$latestVersion" ]; then
 					latestVersion="$version";
-					latestVersionExt="$ext";
+					latestVersionExt="${extPrefix}.${ext}";
 				fi
 			else
 				# first iteration. Just initialize
-				latestVersion="${tarName%.$ext}";
+				latestVersion="$tarNameNoTarNoExt";
 				latestVersionExt="$ext";
+				case "$tarNameNoExt" in *.tar)
+					latestVersion="${latestVersion%.tar}";
+					latestVersionExt=".tar.${ext}";
+				esac
+				
 			fi
 		fi;
 	done
@@ -264,7 +288,7 @@ Scan()
 		Die 'unable to retrieve the latest source code version';
 	fi
 
-	_tarName="${latestVersion}.${latestVersionExt}";
+	_tarName="${latestVersion}${latestVersionExt}";
 
 	_urlTar="${_baseURL}/$_tarName";
 }
