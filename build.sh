@@ -1024,7 +1024,8 @@ ERROR: cyclic dependency detected on package "'"$package"'"';
 		"$_prefix" \
 		"$packageDestDir" \
 		"$_dirBin" \
-		"$_envVarsFile" >> "$logFile" 2>&1 );
+		"$_envVarsFile" \
+		"$_dirRoot" >> "$logFile" 2>&1 );
 	if [ $? -ne 0 ]; then
 		Die 'post build failed! Check the log file "'"$logFile"'"';
 	fi
