@@ -7,7 +7,6 @@ source script.lib.sh
 PackageBuildDependencies()
 {
 	printf '
-cmake
 libpciaccess
 linux-headers
 meson

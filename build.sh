@@ -433,6 +433,14 @@ InitializeSearchPaths()
 	# this value will be prepended to every path returned by pkgconf calls. This
 	# means that we can place the .pc files wherever we want, without modifying
 	# the paths inside of them and a pkgconf call will return a valid path
+	#
+	# THE PROBLEM HERE is that this will only work as long as all the .pc files
+	# we needs are located inside this dir. If you try to call a package that
+	# is the the default system dir (for example, you did not want to build some
+	# package and installed in straight from a distro), then that system package
+	# will also have this directory here appended to its path and that will 
+	# break everything. Perhaps I should reconsider going back to using the
+	# adjust-pkgconfig.sh script
 	PKG_CONFIG_SYSROOT_DIR="$_dirRoot";
 	export PKG_CONFIG_SYSROOT_DIR;
 	

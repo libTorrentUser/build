@@ -67,18 +67,20 @@ PackageBuild()
 		Die "unable to retrieve the latest version tar";
 	fi
 
-	printf 'environment variables\n%s\n' "$(printenv | sort)";
-
 	# first we have to generate the configure script because...
 	# Life would be way easier if releases of these  auto-tools based projects 
-	# came with everything one needed to just "configure; make;" them.
-	$(
+	# came with everything one needed to just "configure; make;" them.	
+	(	
+		printenv | sort;	
 		# you must cd into the source dir before running libtoolize. Sucks, I
 		# know. We use a subshell to avoid having to cd back to where we were
 		DieIfFails cd "${sourceDir}";
 		DieIfFails libtoolize
+		DieIfFails "./autogen.sh";
 	); 	
-	DieIfFails "${sourceDir}/autogen.sh";
+	if [ $? -ne 0  ]; then
+		Die "call to libtoolize or autogen.sh failed";
+	fi
 	
 	DieIfFails ./make.sh \
 		-b="$buildDir" \
