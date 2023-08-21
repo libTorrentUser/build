@@ -379,6 +379,69 @@ InitializeLinker()
 }
 
 
+InitializeSearchPaths()
+{
+	local dirRootPrefixed="${_dirRoot}/${_prefix}";
+
+	# IMPORTANT!!!
+	# the usafe of the PathPrepend function here is important here because it
+	# ensures no ':' char will be left at the end of a path in case the env var
+	# was empty. Some tools crash and burn when that happen
+	
+	# binaries search path. Remember that {_dirBin} must always be the first
+	# in order to force some commands to do stuff we need them to do. We do that
+	# because some packages create scripts that allow other tools to retrieve 
+	# information about them. Many times that means paths to special directories
+	# those packages created. The problem is that we don't really install the
+	# packages in the system and that means that other packages the depend on
+	# them will not build properly. To fix that, we create a copy of those 
+	# scripts with paths adjusted to where the packages were actually built and
+	# put them all inside this dir here. This directory must always come before
+	# any package dest dir in the PATH, otherwise the wrong script might be used
+	DieIfFails mkdir -p "$_dirBin";		
+	PATH=$(PathPrepend "$PATH" "$dirRootPrefixed");
+	PATH=$(PathPrepend "$PATH" "$_dirBin");
+
+	# aditional gcc include directories
+	CPATH=$(PathPrepend "$CPATH" "${dirRootPrefixed}/include");
+	export CPATH;
+
+	# gcc library file search path
+	local dirRootLib="${dirRootPrefixed}/lib";
+	local dirBinLib="${_dirBin}/lib";
+	DieIfFails mkdir -p "$dirBinLib";
+
+	# the lib inside our temporary bin directory must always comes first in
+	# the path so our "adjusted" files are picked, instead of the regular
+	# ones. 		
+
+	# additional GCC library directories
+	LIBRARY_PATH=$(PathPrepend "$LIBRARY_PATH" "$dirRootLib");
+	LIBRARY_PATH=$(PathPrepend "$LIBRARY_PATH" "$dirBinLib");
+	export LIBRARY_PATH;
+
+	# additional shared library directories
+	LD_LIBRARY_PATH=$(PathPrepend "$LD_LIBRARY_PATH" "$dirRootLib");
+	LD_LIBRARY_PATH=$(PathPrepend "$LD_LIBRARY_PATH" "$dirBinLib");
+	export LD_LIBRARY_PATH;
+
+	# pkg-config is a somewhat standard tool that does what the scripts 
+	# mentioned above do. They also have to have their paths adjusted, and we
+	# will put them all here
+	#local pkgConfigDir="${_dirBin}/pkgconfig";
+	#DieIfFails mkdir -p "$pkgConfigDir";
+	#PKG_CONFIG_PATH=$(PathPrepend "$PKG_CONFIG_PATH" "$pkgConfigDir");
+
+	# same as above for libtool files. But this one, unlike pkg-config, does not
+	# have a env variable to hold the path. Because of that, we must ensure this
+	# dir with the adjusted files comes first in the library search paths
+	# LIBRARY_PATH and LD_LIBRARY_PATH
+	#local libtoolDir="${_dirBin}/lib";
+	#DieIfFails mkdir -p "$libtoolDir";
+}
+
+
+
 Initialize()
 {
 	# we have to perform a lazy check if the sources will be deleted
@@ -391,26 +454,10 @@ Initialize()
 		Die '--build-dir is needed';
 	fi
 
-	# we have to make sure theese variables are exported. We will add more stuff
-	# in them later, but there is no need to keep calling export every time we
-	# do it. We always assign them to themselves first, just in case they 
-	# already existed
-
-	# directories where pkg-config will search for .pc files
-	PKG_CONFIG_PATH="$PKG_CONFIG_PATH";
-	export PKG_CONFIG_PATH;	
-
-	# additional GCC include directories
-	CPATH="$CPATH";
-	export CPATH;
-
-	# additional GCC library directories
-	LIBRARY_PATH="$LIBRARY_PATH";
-	export LIBRARY_PATH;
-
-	# aditional shared library directories
-	LD_LIBRARY_PATH="$LD_LIBRARY_PATH";
-	export LD_LIBRARY_PATH;
+	# special bin dir we'll use to override some tools configuration	
+	_dirBin="${_buildDir}/bin";
+		
+	DieIfFails mkdir -p "$_dirBin";
 
 	# these dirs will be used by all packages
 	_logDir="${_buildDir}/log";
@@ -424,33 +471,6 @@ Initialize()
 			Die "unable to retrieve the number of physical processors";
 		fi	
 	fi
-
-	# some packages create scripts that allow other tools to retrieve 
-	# information about them. Many times that means paths to special directories
-	# those packages created. The problem is that we don't really install the
-	# packages in the system and that means that other packages the depend on
-	# them will not build properly. To fix that, we create a copy of those 
-	# scripts with paths adjusted to where the packages were actually built and
-	# put them all inside this dir here. This directory must always come before
-	# any package dest dir in the PATH, otherwise the wrong script might be used
-	_dirBin="${_buildDir}/bin";	
-	PATH=$(PathPrepend "$PATH" "$_dirBin");
-	DieIfFails mkdir -p "$_dirBin";
-	export PATH;
-
-	# pkg-config is a somewhat standard tool that does what the scripts 
-	# mentioned above do. They also have to have their paths adjusted, and we
-	# will put them all here
-	local pkgConfigDir="${_dirBin}/pkgconfig";
-	DieIfFails mkdir -p "$pkgConfigDir";
-	PKG_CONFIG_PATH=$(PathPrepend "$PKG_CONFIG_PATH" "$pkgConfigDir");
-
-	# same as above for libtool files. But this one, unlike pkg-config, does not
-	# have a env variable to hold the path. Because of that, we must ensure this
-	# dir with the adjusted files comes first in the library search paths
-	# LIBRARY_PATH and LD_LIBRARY_PATH
-	local libtoolDir="${_dirBin}/lib";
-	DieIfFails mkdir -p "$libtoolDir";
 
 	# this file will hold the name of all packages that have already been added
 	# to the search paths. This way we can avoid adding duplicated entries. And
@@ -477,6 +497,10 @@ Initialize()
 	# without us having to pass the directories of every single package to it
 	_dirRoot="${_buildDir}/r";
 	DieIfFails mkdir -p "$_dirRoot";
+
+	# force tools to search for stuff in our fake root dir ($_dirRoot) before 
+	# the standard directories
+	InitializeSearchPaths;
 
 	# override cc, c++, gcc, etc with scripts that enforce or disable 
 	# optimizations
@@ -667,36 +691,7 @@ UpdateSearchPaths()
 		
 	local packageDestDir="$2";
 	local warnings="$3";
-
-	# add the dest dir to the path, so packages that depend on this one can be
-	# built without issues
-	local destDirPrefixed="${packageDestDir}$_prefix";
-
-	# binaries search path. Remember that {_dirBin} must always be the first.
-	# We ensure that by first deleting it and then adding it again
-	PATH="${PATH##${_dirBin}:}";
-	PATH=$(PathPrepend "$PATH" "${destDirPrefixed}/bin");
-	PATH=$(PathPrepend "$PATH" "${_dirBin}");
-
-	# gcc include file search path 
-	CPATH=$(PathPrepend "$CPATH" "${destDirPrefixed}/include");
-
-	# gcc library file search path
-	local dirLib="${destDirPrefixed}/lib";
-	if [ -e "$dirLib" ]; then
-		# the lib inside our temporary bin directory must always comes first in
-		# the path so our "adjusted" files are picked, instead of the regular
-		# ones. 
-		local libInBin="${_dirBin}/lib";
-		LIBRARY_PATH="${LIBRARY_PATH##${libInBin}:}"
-		LIBRARY_PATH=$(PathPrepend "$LIBRARY_PATH" "$dirLib");
-		LIBRARY_PATH=$(PathPrepend "$LIBRARY_PATH" "$libInBin");
-
-		LD_LIBRARY_PATH="${LD_LIBRARY_PATH##${libInBin}:}"
-		LD_LIBRARY_PATH=$(PathPrepend "$LD_LIBRARY_PATH" "$dirLib");
-		LD_LIBRARY_PATH=$(PathPrepend "$LD_LIBRARY_PATH" "$libInBin");
-	fi
-
+	
 	# flag this package as one of those that are in our paths
 	DieIfFails printf '%s\n' "$package" >> "$_packagesAddedToSearchPaths";
 
@@ -854,8 +849,8 @@ BuildShowingLog()
 	# kill the whole process group if this process is killed	# 
 	# https://stackoverflow.com/questions/360201/how-do-i-kill-background-processes-jobs-when-my-shell-script-exits
 	# https://stackoverflow.com/a/22644006/1593842			
-	trap "exit" INT TERM
-	trap "kill 0" EXIT
+	trap "exit" INT TERM;
+	trap "kill 0" EXIT;
 
 	$( PackageBuild "$@" > "$logFile" 2>&1 ) &
 
@@ -886,6 +881,7 @@ BuildShowingLog()
 
 	# restore the traps
 	trap - EXIT;
+	trap - INT TERM;	
 	eval "$savedTraps";
 
 	return "$exitCode";

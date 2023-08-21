@@ -218,6 +218,8 @@ Scan()
 	local latestVersion;
 	local latestVersionExt;	
 	for ext in $_tarExtensions; do
+		#printf 'ext=%s\nlatestVersion=%s\nlatestVersionExt=%s\n' "$ext" "$latestVersion" "$latestVersionExt" 1>&2;
+	
 		# search for a tar with the current extension. The first grep here has
 		# a double quote char (") in the end in order to not mistakenly match
 		# similar extensions, like bz and bz2. 		
@@ -252,10 +254,8 @@ Scan()
 			if [ ! -z "$latestVersion" ]; then
 				# remove the extension
 				local version="$tarNameNoTarNoExt";
-				local extPrefix=;
-				case "$tarNameNoExt" in "*.tar")
-					extPrefix='.tar';
-				esac
+				local versionExt="${tarName#$version}";
+				#printf 'version=%s\nversionExt=%s\n' "$version" "$versionExt" 1>&2;
 				
 
 				# use sort in a very hacky way to compare the two versions and
@@ -269,17 +269,12 @@ Scan()
 				# it is newer
 				if [ "$version" != "$latestVersion" ]; then
 					latestVersion="$version";
-					latestVersionExt="${extPrefix}.${ext}";
+					latestVersionExt="$versionExt";
 				fi
 			else
 				# first iteration. Just initialize
 				latestVersion="$tarNameNoTarNoExt";
-				latestVersionExt="$ext";
-				case "$tarNameNoExt" in *.tar)
-					latestVersion="${latestVersion%.tar}";
-					latestVersionExt=".tar.${ext}";
-				esac
-				
+				latestVersionExt="${tarName#$latestVersion}";				
 			fi
 		fi;
 	done

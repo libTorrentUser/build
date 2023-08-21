@@ -41,6 +41,10 @@ PackageBuild()
 		--url='https://www.alsa-project.org/files/pub/lib' \
 		-b="$buildDir"
 		);
+
+	if [ -z "$sourceDir" ]; then
+		Die 'unable to download the latest source code';
+	fi
 	
 	CC="${dirBin}/cc-lto.partition.none" DieIfFails ./make.sh \
 		-b="$buildDir" \
