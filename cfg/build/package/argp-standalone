@@ -6,8 +6,9 @@ source script.lib.sh
 PackageBuildDependencies()
 {
 	printf '
-meson
-ninja
+autoconf
+automake 
+libtool 
 ';
 }
 
@@ -44,6 +45,10 @@ PackageBuild()
 	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
 		Die "unable to retrieve the latest version tar";
 	fi
+
+	DieIfFails cd "$sourceDir";
+	DieIfFails autoreconf -vif;
+	DieIfFails cd - ;
 	
 	DieIfFails ./make.sh \
 		-b="$buildDir" \

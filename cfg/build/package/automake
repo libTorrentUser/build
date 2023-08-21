@@ -28,13 +28,20 @@ PackagePostBuild()
 	# export these env vars so other packages can use automake's perl stuff. But
 	# only do it if it hasn't been done yet
 	if EnvAddPackage "$envVarsFile" 'automake'; then
-		local path=$(find "${rootDir}${prefix}/share/" -maxdepth 1 -mindepth 1 -name 'automake*' -type d );			
+		local path=$(find "${rootDir}${prefix}/share/" -maxdepth 1 -mindepth 1 -name 'automake-*' -type d );			
 		for v in PERL5LIB AUTOMAKE_LIBDIR; do
 			EnvPathPrepend "$envVarsFile" "$v" "$path";
 		done;
 
-		path=$(find "${rootDir}${prefix}/share/" -maxdepth 1 -mindepth 1 -name 'aclocal*' -type d );			
+		local path=$(find "${rootDir}${prefix}/share/" -maxdepth 1 -mindepth 1 -name 'automake' -type d );			
+		for v in PERL5LIB AUTOMAKE_LIBDIR; do
+			EnvPathPrepend "$envVarsFile" "$v" "$path";
+		done;
+
+		path=$(find "${rootDir}${prefix}/share/" -maxdepth 1 -mindepth 1 -name 'aclocal-*' -type d );
 		EnvPathPrepend "$envVarsFile" 'ACLOCAL_PATH' "$path";
+		path=$(find "${rootDir}${prefix}/share/" -maxdepth 1 -mindepth 1 -name 'aclocal' -type d );
+				EnvPathPrepend "$envVarsFile" 'ACLOCAL_PATH' "$path";
 	fi	
 	
 	# edit the paths in aclocal and automake and put it in our bin dir, so when 

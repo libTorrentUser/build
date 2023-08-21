@@ -54,6 +54,7 @@ PackageBuild()
 			-D b_lto=true \
 			-D intel=enabled \
 			-D tests=false \
+			-D werror=false \
 			" \
 		--cmd-build='meson compile' \
 		--dest-dir="$destDir" \

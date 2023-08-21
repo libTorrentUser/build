@@ -48,7 +48,7 @@ PackageBuild()
 	local content=$(Download 'https://sourceware.org/elfutils/');
 	local url;
 	url=$(printf '%s' "$content" | \
-		grep -o 'http[^"]*latest[^"]*' | \
+		grep -o 'http[^"]*latest.tar[^"]*' | \
 		grep -v '.sig$'
 		);
 

@@ -21,6 +21,9 @@ BuildXOrgLib()
 	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
 		Die "unable to retrieve the latest version tar";
 	fi
+
+	 #apply all patches
+	 DieIfFails ./patch.sh "$package" "$sourceDir";
 		
 	DieIfFails ./make.sh \
 		-b="$buildDir" \

@@ -399,7 +399,7 @@ InitializeSearchPaths()
 	# put them all inside this dir here. This directory must always come before
 	# any package dest dir in the PATH, otherwise the wrong script might be used
 	DieIfFails mkdir -p "$_dirBin";		
-	PATH=$(PathPrepend "$PATH" "$dirRootPrefixed");
+	PATH=$(PathPrepend "$PATH" "$dirRootPrefixed/bin");
 	PATH=$(PathPrepend "$PATH" "$_dirBin");
 
 	# aditional gcc include directories
@@ -424,14 +424,18 @@ InitializeSearchPaths()
 	LD_LIBRARY_PATH=$(PathPrepend "$LD_LIBRARY_PATH" "$dirRootLib");
 	LD_LIBRARY_PATH=$(PathPrepend "$LD_LIBRARY_PATH" "$dirBinLib");
 	export LD_LIBRARY_PATH;
+	
+	# list of secondary directories where .pc files are looked up
+	PKG_CONFIG_PATH=$(PathPrepend "$PKG_CONFIG_PATH" "${dirRootPrefixed}/lib/pkgconfig");
+	PKG_CONFIG_PATH=$(PathPrepend "$PKG_CONFIG_PATH" "${dirRootPrefixed}/share/pkgconfig");
+	export PKG_CONFIG_PATH;
 
-	# pkg-config is a somewhat standard tool that does what the scripts 
-	# mentioned above do. They also have to have their paths adjusted, and we
-	# will put them all here
-	#local pkgConfigDir="${_dirBin}/pkgconfig";
-	#DieIfFails mkdir -p "$pkgConfigDir";
-	#PKG_CONFIG_PATH=$(PathPrepend "$PKG_CONFIG_PATH" "$pkgConfigDir");
-
+	# this value will be prepended to every path returned by pkgconf calls. This
+	# means that we can place the .pc files wherever we want, without modifying
+	# the paths inside of them and a pkgconf call will return a valid path
+	PKG_CONFIG_SYSROOT_DIR="$_dirRoot";
+	export PKG_CONFIG_SYSROOT_DIR;
+	
 	# same as above for libtool files. But this one, unlike pkg-config, does not
 	# have a env variable to hold the path. Because of that, we must ensure this
 	# dir with the adjusted files comes first in the library search paths
