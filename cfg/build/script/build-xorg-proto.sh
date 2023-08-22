@@ -10,6 +10,7 @@ BuildXOrgProto()
 	local prefix="$3";
 	local destDir="$4";
 	local dirBin="$5";
+	local dirRoot="$6";
 
 	local sourceDir=$(./latest.sh \
 		-b="$buildDir" \
@@ -35,5 +36,6 @@ BuildXOrgProto()
 	DieIfFails ./adjust-pkgconfig.sh \
 		-d="$destDir" \
 		--prefix="$prefix" \
-		-o="$pkgconfigDir";
+		-o="$pkgconfigDir" \
+		-r="$dirRoot";
 }

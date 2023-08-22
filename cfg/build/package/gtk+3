@@ -37,6 +37,7 @@ PackageBuild()
 	local destDir="$3";
 	#local npp="$4";
 	local dirBin="$5";
+	local dirRoot="$6";
 	
 	local package='gtk+3';
 
@@ -82,6 +83,7 @@ PackageBuild()
 		-p="$package" \
 		-d="$destDir" \
 		--prefix="$prefix" \
-		-o="$pkgconfigDir";
+		-o="$pkgconfigDir" \
+		-r="$dirRoot";
 
 }

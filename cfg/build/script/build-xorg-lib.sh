@@ -10,7 +10,8 @@ BuildXOrgLib()
 	local prefix="$3";
 	local destDir="$4";
 	#local npp="$5";
-	local dirBin="$6";	
+	local dirBin="$6";
+	local dirRoot="$7";
 
 	local sourceDir=$(./latest.sh \
 		-b="$buildDir" \
@@ -47,7 +48,8 @@ BuildXOrgLib()
 	DieIfFails ./adjust-pkgconfig.sh \
 		-d="$destDir" \
 		--prefix="$prefix" \
-		-o="${dirBin}/pkgconfig";
+		-o="${dirBin}/pkgconfig" \
+		-r="$dirRoot";
 
 	# although I painfuly made things work with this awesome script, nothing
 	# in xorg should need libtool .la files. So we can simply delete them. 

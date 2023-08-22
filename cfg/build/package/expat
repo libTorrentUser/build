@@ -22,6 +22,7 @@ PackageBuild()
 	local prefix="$2";
 	local destDir="$3";
 	local dirBin="$5";
+	local dirRoot="$6";
 
 	local package='expat';
 
@@ -43,8 +44,8 @@ PackageBuild()
 		--install-options="install-strip";
 
 	DieIfFails ./adjust-pkgconfig.sh \
-		-p="$package" \
 		-d="$destDir" \
 		--prefix="$prefix" \
-		-o="$dirBin/pkgconfig";
+		-o="$dirBin/pkgconfig" \
+		-r="$dirRoot";
 }

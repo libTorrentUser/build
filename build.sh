@@ -381,7 +381,7 @@ InitializeLinker()
 
 InitializeSearchPaths()
 {
-	local dirRootPrefixed="${_dirRoot}/${_prefix}";
+	local dirRootPrefixed="${_dirRoot}${_prefix}";
 
 	# IMPORTANT!!!
 	# the usafe of the PathPrepend function here is important here because it
@@ -426,10 +426,9 @@ InitializeSearchPaths()
 	export LD_LIBRARY_PATH;
 	
 	# list of secondary directories where .pc files are looked up
-	PKG_CONFIG_PATH=$(PathPrepend "$PKG_CONFIG_PATH" "${dirRootPrefixed}/lib/pkgconfig");
-	PKG_CONFIG_PATH=$(PathPrepend "$PKG_CONFIG_PATH" "${dirRootPrefixed}/share/pkgconfig");
-	export PKG_CONFIG_PATH;
-
+	#PKG_CONFIG_PATH=$(PathPrepend "$PKG_CONFIG_PATH" "${dirRootPrefixed}/lib/pkgconfig");
+	#PKG_CONFIG_PATH=$(PathPrepend "$PKG_CONFIG_PATH" "${dirRootPrefixed}/share/pkgconfig");
+	
 	# this value will be prepended to every path returned by pkgconf calls. This
 	# means that we can place the .pc files wherever we want, without modifying
 	# the paths inside of them and a pkgconf call will return a valid path
@@ -439,10 +438,21 @@ InitializeSearchPaths()
 	# is the the default system dir (for example, you did not want to build some
 	# package and installed in straight from a distro), then that system package
 	# will also have this directory here appended to its path and that will 
-	# break everything. Perhaps I should reconsider going back to using the
-	# adjust-pkgconfig.sh script
-	PKG_CONFIG_SYSROOT_DIR="$_dirRoot";
-	export PKG_CONFIG_SYSROOT_DIR;
+	# break everything. This "bug" was/is being discussed here
+	#
+	# https://github.com/pkgconf/pkgconf/issues/213
+	#
+	# The proposed solution is to make this env var only append the path if
+	# the .pc file is not in the real system root. That would solve our problems
+	# here but it hasn't been implemented yet ( pkgconf v2.0.2) so, for now, we
+	# will still use adjust-pkgconfig.sh
+	#PKG_CONFIG_SYSROOT_DIR="$_dirRoot";
+	#export PKG_CONFIG_SYSROOT_DIR;
+	local dirBinPkgconfig="${_dirBin}/pkgconfig";
+	DieIfFails mkdir -p "$dirBinPkgconfig";
+	PKG_CONFIG_PATH=$(PathPrepend "$PKG_CONFIG_PATH" "$dirBinPkgconfig");
+	export PKG_CONFIG_PATH;
+	
 	
 	# same as above for libtool files. But this one, unlike pkg-config, does not
 	# have a env variable to hold the path. Because of that, we must ensure this

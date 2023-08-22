@@ -36,6 +36,7 @@ PackagePostBuild()
 	local prefix="$1";
 	local destDir="$2";	
 	local dirBin="$3";
+	local dirRoot="$6";
 	local envVarsFile="$4";
 
 	if EnvAddPackage "$envVarsFile" 'pkgconf'; then		
@@ -53,6 +54,7 @@ PackageBuild()
 	local destDir="$3";
 	#local npp="$4";
 	local dirBin="$5";
+	local dirRoot="$6";
 	
 	local package='pkgconf';
 
@@ -70,8 +72,7 @@ PackageBuild()
 	# first we have to generate the configure script because...
 	# Life would be way easier if releases of these  auto-tools based projects 
 	# came with everything one needed to just "configure; make;" them.	
-	(	
-		printenv | sort;	
+	(		
 		# you must cd into the source dir before running libtoolize. Sucks, I
 		# know. We use a subshell to avoid having to cd back to where we were
 		DieIfFails cd "${sourceDir}";
@@ -101,5 +102,6 @@ PackageBuild()
 		-p='libpkgconf' \
 		-d="$destDir" \
 		--prefix="$prefix" \
-		-o="$pkgconfigDir";
+		-o="$pkgconfigDir" \
+		-r="$dirRoot";
 }

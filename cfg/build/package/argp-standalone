@@ -21,7 +21,7 @@ PackageRuntimeDependencies()
 
 PackageWarnings()
 {
-	return 0;	
+	printf 'at least up until v1.5.0, the meson build is "broken" (it tries to link with libintl if it sees libintl.h in the system, which we do not want and will make the package elfutils fail to build) and using "make install" seems to do nothing. No files are copied to DESTDIR. Currently we are using make and manually copying the the files.';
 }
 
 
@@ -46,19 +46,25 @@ PackageBuild()
 		Die "unable to retrieve the latest version tar";
 	fi
 
-	DieIfFails cd "$sourceDir";
-	DieIfFails autoreconf -vif;
-	DieIfFails cd - ;
+	(
+		DieIfFails cd "$sourceDir";
+		DieIfFails autoreconf -vif;
+	);
+
+	if [ $? -ne 0  ]; then
+		Die "autoreconf failed!";
+	fi
 	
 	DieIfFails ./make.sh \
 		-b="$buildDir" \
 		-s="$sourceDir" \
-		--cmd-configure='meson' \
 		--configure-options="\
 			--prefix=$prefix \
 		" \
-		--cmd-build='meson compile' \
 		--dest-dir="$destDir" \
-		--cmd-install='meson' \
-		--install-options="install";	
+		--install-options="install-strip";
+
+	# it seems make install does nothing. So we do it outselves
+	DieIfFails install -D -m644 "${sourceDir}/argp.h" "${destDir}${prefix}/include/argp.h";
+	DieIfFails install -D -m755 "${buildDir}/obj/libargp.a" "${destDir}${prefix}/lib/libargp.a";
 }

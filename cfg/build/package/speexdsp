@@ -26,6 +26,7 @@ PackageBuild()
 	local prefix="$2";
 	local destDir="$3";
 	local dirBin="$5";
+	local dirRoot="$6";
 
 	local package='speexdsp';
 

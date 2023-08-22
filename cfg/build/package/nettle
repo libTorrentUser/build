@@ -28,6 +28,7 @@ PackageBuild()
 	local destDir="$3";
 	#local npp="$4";
 	local dirBin="$5";
+	local dirRoot="$6";
 
 	local package='nettle';
 
@@ -37,12 +38,9 @@ PackageBuild()
 
 	# NOTE: hogweed will only be built if gmp is found. And some libraries that
 	# depend on nettle, like gnutls, also require hogweed
-	local scriptNames="$package hogweed";
-	for s in $scriptNames; do
-		DieIfFails ./adjust-pkgconfig.sh \
-			-p="$s" \
-			-d="$destDir" \
-			--prefix="$prefix" \
-			-o="$pkgconfigDir";
-	done;	
+	DieIfFails ./adjust-pkgconfig.sh \
+		-d="$destDir" \
+		--prefix="$prefix" \
+		-o="$pkgconfigDir" \
+		-r="$dirRoot";
 }

@@ -31,6 +31,8 @@ PackageBuild()
 	local destDir="$3";
 	#local npp="$4";
 	local dirBin="$5";
+	local dirRoot="$6";
+	local dirRoot="$6";
 	
 	local package='freetype-2';
 
@@ -59,10 +61,10 @@ PackageBuild()
 	local pkgconfigDir="$dirBin/pkgconfig";
 
 	DieIfFails ./adjust-pkgconfig.sh \
-		-p="freetype2" \
 		-d="$destDir" \
 		--prefix="$prefix" \
-		-o="$pkgconfigDir";	
+		-o="$pkgconfigDir" \
+		-r="$dirRoot";	
 
 	# although I painfuly made things work with this awesome script, nothing
 	# should need these libtool .la files.  Anything an user could do with them
@@ -73,6 +75,6 @@ PackageBuild()
 	#	--prefix="$prefix" \
 	#	-o="${dirBin}/lib";
 	DieIfFails ./adjust-libtool.sh \
-		-d="$destDir" \
+		-d="$dirRoot" \
 		--delete;
 }

@@ -50,6 +50,7 @@ PackageBuild()
 	local destDir="$3";
 	local npp="$4";
 	local dirBin="$5";
+	local dirRoot="$6";
 
 	local package='python';
 
@@ -184,38 +185,11 @@ PackageBuild()
 	fi
 	
 	# adjust the pkg-config scripts
-	LogErr 'retrieving pkg-config scripts names...'
-
-	# python creates pkg-config scripts named after the current version. Have
-	# I told you python sucks? Yeah... Anyway, since parsing ls is evil and will
-	# destroy the universe and all that, so we do this instead (and pray for the
-	# best????)
-	local scriptFiles=;
-	scriptFiles=$(
-		local dir="${destDirPrefixed}/lib/pkgconfig";		
-		for f in "$dir/"*; do
-			# remove the extension, because the adjust-pkgconfig script expects
-			# names without the .pc extension
-			f="${f%.*}";
-
-			# and remove the directory too. We need the names only.
-			f="${f#$dir/}";
-			
-			printf '%s ' "$f";
-		done;
-		);
-
-	if [ $? -ne 0  ] || [ -z "$scriptFiles" ]; then
-		Die "unable to retrieve the pkg-config script file names";
-	fi
-
 	local pkgconfigDir="${dirBin}/pkgconfig";
 		
-	for s in $scriptFiles; do
-		DieIfFails "${helperScriptDir}/adjust-pkgconfig.sh" \
-			-p="$s" \
-			-d="$destDir" \
-			--prefix="$prefix" \
-			-o="$pkgconfigDir";
-	done;	
+	DieIfFails "${helperScriptDir}/adjust-pkgconfig.sh" \
+		-d="$destDir" \
+		--prefix="$prefix" \
+		-o="$pkgconfigDir" \
+		-r="$dirRoot";
 }

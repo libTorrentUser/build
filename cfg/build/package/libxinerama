@@ -29,6 +29,7 @@ PackageBuild()
 	local destDir="$3";
 	local npp="$4";
 	local dirBin="$5";
+	local dirRoot="$6";
 	
 	BuildXOrgLib \
 		'libXinerama' \
@@ -36,5 +37,6 @@ PackageBuild()
 		"$prefix" \
 		"$destDir" \
 		"$npp" \
-		"$dirBin";
+		"$dirBin" \
+		"$dirRoot";
 }

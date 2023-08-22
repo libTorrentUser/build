@@ -37,6 +37,7 @@ PackageBuild()
 	local destDir="$3";
 	#local npp="$4";
 	local dirBin="$5";
+	local dirRoot="$6";
 	
 	local package='glib';
 
@@ -83,6 +84,7 @@ PackageBuild()
 	DieIfFails ./adjust-pkgconfig.sh \
 		-d="$destDir" \
 		--prefix="$prefix" \
-		-o="$pkgconfigDir";
+		-o="$pkgconfigDir" \
+		-r="$dirRoot";
 
 }

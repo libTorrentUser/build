@@ -22,6 +22,7 @@ PackageBuild()
 	local prefix="$2";
 	local destDir="$3";
 	local dirBin="$5";
+	local dirRoot="$6";
 
 	local package='pcre';
 
@@ -53,12 +54,9 @@ PackageBuild()
 
 	local pkgconfigDir="$dirBin/pkgconfig";
 
-	local scriptNames="libpcre libpcre16 libpcre32 libpcreposix libpcrecpp";
-	for s in $scriptNames; do
-		DieIfFails ./adjust-pkgconfig.sh \
-			-p="$s" \
-			-d="$destDir" \
-			--prefix="$prefix" \
-			-o="$pkgconfigDir";
-	done;
+	DieIfFails ./adjust-pkgconfig.sh \
+		-d="$destDir" \
+		--prefix="$prefix" \
+		-o="$pkgconfigDir" \
+		-r="$dirRoot";
 }
