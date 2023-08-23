@@ -10,7 +10,7 @@ PackageBuildDependencies()
 	# have it. Pick whichever builds faster. musl usually builds 3 billion times
 	# faster than gettext
 	printf '
-argp-standalone
+argp-standalone-pic
 make
 musl
 musl-fts

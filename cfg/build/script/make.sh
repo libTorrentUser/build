@@ -321,7 +321,7 @@ Configure()
 				$_configureOptions;
 		;;
 		meson)
-			SaveCommandScript 'configure.sh' "cd $_objDir;" meson setup "${_objDir}" $_configureOptions;
+			SaveCommandScript 'configure.sh' "cd $_sourceDir;" meson setup "${_objDir}" $_configureOptions;
 		
 			DieIfFails cd "$_sourceDir";
 			DieIfFails meson setup "${_objDir}" $_configureOptions;

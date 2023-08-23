@@ -42,19 +42,20 @@ PackageBuild()
 	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
 		Die "unable to retrieve the latest version tar";
 	fi
-	
+
+	#CFLAGS="$CFLAGS -w" \
 	DieIfFails ./make.sh \
 		-b="$buildDir" \
 		-s="$sourceDir" \
 		--cmd-configure='meson' \
 		--configure-options="\
+			-Dwerror=false \
 			--prefix=$prefix \
 			--default-library=both \
 			-D buildtype=release \
 			-D b_lto=true \
 			-D intel=enabled \
 			-D tests=false \
-			-D werror=false \
 			" \
 		--cmd-build='meson compile' \
 		--dest-dir="$destDir" \
@@ -69,3 +70,4 @@ PackageBuild()
 		-o="$pkgconfigDir" \
 		-r="$dirRoot";
 }
+

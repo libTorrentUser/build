@@ -1,0 +1,11 @@
+#!/bin/sh
+
+source ../package/argp-standalone;
+
+
+PackageBuild()
+{
+	PackageBuild_argp_standalone \
+		"$CFLAGS -fPIC" \
+		"$@";
+}

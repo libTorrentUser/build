@@ -21,20 +21,24 @@ PackageRuntimeDependencies()
 
 PackageWarnings()
 {
-	printf 'at least up until v1.5.0, the meson build is "broken" (it tries to link with libintl if it sees libintl.h in the system, which we do not want and will make the package elfutils fail to build) and using "make install" seems to do nothing. No files are copied to DESTDIR. Currently we are using make and manually copying the the files.';
+	printf 'Using "make install" seems to do nothing. No files are copied to DESTDIR. Currently we are using make and manually copying the the files.';
 }
 
 
-PackageBuild()
+PackageBuild_argp_standalone()
 {
+	local cFlags="$1";
+	shift;
+	
 	local buildDir="$1";
 	local prefix="$2";
 	local destDir="$3";
-	#local npp="$4";
+	local npp="$4";
 	local dirBin="$5";
 	
 	local package='argp-standalone';
 
+	# download the source code
 	local sourceDir;
 	sourceDir=$(./latest.sh \
 		--host='github-tag' \
@@ -46,6 +50,7 @@ PackageBuild()
 		Die "unable to retrieve the latest version tar";
 	fi
 
+	# generate the configure script
 	(
 		DieIfFails cd "$sourceDir";
 		DieIfFails autoreconf -vif;
@@ -54,7 +59,12 @@ PackageBuild()
 	if [ $? -ne 0  ]; then
 		Die "autoreconf failed!";
 	fi
-	
+
+	#apply all patches
+	DieIfFails ./patch.sh "$package" "$sourceDir";	
+
+	# configure and build
+	CFLAGS="$cFlags" \
 	DieIfFails ./make.sh \
 		-b="$buildDir" \
 		-s="$sourceDir" \
@@ -67,4 +77,12 @@ PackageBuild()
 	# it seems make install does nothing. So we do it outselves
 	DieIfFails install -D -m644 "${sourceDir}/argp.h" "${destDir}${prefix}/include/argp.h";
 	DieIfFails install -D -m755 "${buildDir}/obj/libargp.a" "${destDir}${prefix}/lib/libargp.a";
+}
+
+
+PackageBuild()
+{
+	PackageBuild_argp_standalone \
+		'' \
+		"$@";
 }
