@@ -54,14 +54,13 @@ PackageBuild()
 PackagePostBuild()
 {	
 	local prefix="$1";
-	local destDir="$2";
-	local binDir="$3";
+	#local destDir="$2";
+	#local binDir="$3";
 	local envVarsFile="$4";
+	local rootDir="$5";
 
 	PostBuildPython \
-		'python-markupsafe' \
 		"$prefix" \
-		"$destDir" \
-		"$binDir" \
+		"$rootDir" \
 		"$envVarsFile";
 }

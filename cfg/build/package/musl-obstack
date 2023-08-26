@@ -49,17 +49,6 @@ PackageBuild()
 		Die "unable to retrieve the latest version tar";
 	fi
 
-	# apply all patches
-	local patchDir="../patch/${package}";
-	if [ $(CountItems "$patchDir") -gt 0 ]; then
-		for p in "$patchDir/"*; do
-			p=$(readlink -f "$p");
-			printf 'applying patch %s\n' "$p";
-			DieIfFails patch -p 1 -i "$p" -d "$sourceDir";
-		done;
-	fi
-	
-
 	# this is one of those projects that you must first generate the configure
 	# script. And you must run the stupid bootstrap.sh script from the source
 	# dir.	

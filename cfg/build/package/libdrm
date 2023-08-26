@@ -21,6 +21,12 @@ PackageRuntimeDependencies()
 }
 
 
+PackageWarnings()
+{
+	return 0;
+}
+
+
 PackageBuild()
 {
 	local buildDir="$1";
@@ -43,16 +49,15 @@ PackageBuild()
 		Die "unable to retrieve the latest version tar";
 	fi
 
-	#CFLAGS="$CFLAGS -w" \
 	DieIfFails ./make.sh \
 		-b="$buildDir" \
 		-s="$sourceDir" \
 		--cmd-configure='meson' \
 		--configure-options="\
-			-Dwerror=false \
 			--prefix=$prefix \
 			--default-library=both \
 			-D buildtype=release \
+			-D b_colorout=auto \
 			-D b_lto=true \
 			-D intel=enabled \
 			-D tests=false \

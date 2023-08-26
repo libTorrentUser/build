@@ -402,9 +402,22 @@ InitializeSearchPaths()
 	PATH=$(PathPrepend "$PATH" "$dirRootPrefixed/bin");
 	PATH=$(PathPrepend "$PATH" "$_dirBin");
 
-	# aditional gcc include directories
-	CPATH=$(PathPrepend "$CPATH" "${dirRootPrefixed}/include");
-	export CPATH;
+	# aditional gcc include directories. See:
+	#
+	# https://gcc.gnu.org/onlinedocs/cpp/Environment-Variables.html
+	#
+	# We use C_INCLUDE_PATH and CPLUS_INCLUDE_PATH instead of CPATH here because
+	# we want these header files to be treated as if they were "system headers"
+	# because... that is what they are. System headers get special treatment
+	# when it comes to warnings and a lot of packages that enable all warnings
+	# depend of that. See
+	#
+	# https://gcc.gnu.org/onlinedocs/cpp/System-Headers.html
+	#
+	C_INCLUDE_PATH=$(PathPrepend "$C_INCLUDE_PATH" "${dirRootPrefixed}/include");
+	CPLUS_INCLUDE_PATH=$(PathPrepend "$CPLUS_INCLUDE_PATH" "${dirRootPrefixed}/include");
+	export C_INCLUDE_PATH;	
+	export CPLUS_INCLUDE_PATH;
 
 	# gcc library file search path
 	local dirRootLib="${dirRootPrefixed}/lib";

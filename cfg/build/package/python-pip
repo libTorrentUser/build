@@ -5,7 +5,6 @@ source script.lib.sh
 source ../script/postbuild-python.sh
 
 
-
 PackageBuildDependencies()
 {
 	printf 'python-setuptools';
@@ -13,6 +12,12 @@ PackageBuildDependencies()
 
 
 PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageWarnings()
 {
 	return 0;
 }
@@ -26,30 +31,37 @@ PackageBuild()
 	local npp="$4";
 	local dirBin="$5";
 
-	local package='python-mako';
+	local package='python-pip';
 
+	# NOTE: last time I tried using the release from the github repo
+	# (pypa/setuptools) it was badly broken and failed during the install,
+	# complaining about being unable to copy a directory named 
+	# "build/scripts-3.10" because it did not exist. Feel free to give it 
+	# another try if you wish.
 	local sourceDir;	
 	sourceDir=$(./latest.sh \
-		--host='github' \
-		--github-regex='tarball_url.*' \
-		--package="sqlalchemy/mako" \
+		--host='github-tag' \
+		--package='pypa/pip' \
 		-b="$buildDir");
 	
 	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
 		Die "unable to retrieve the latest version tar";
 	fi
 
-	DieIfFails cd "$sourceDir";
+	(
+		DieIfFails cd "$sourceDir";
 
-	LogErr 'building...'
-	DieIfFails python setup.py build \
-		-j $npp;
+		LogErr 'building...'
+		DieIfFails python setup.py build \
+			-j $npp;
 		
-	LogErr 'installing...'
-	DieIfFails python setup.py install \
-		--prefix=$prefix \
-		--optimize=2 \
-		--root="$destDir"
+		LogErr 'installing...'		
+		DieIfFails python setup.py install \
+			--prefix=$prefix \
+			--optimize=2 \
+			--root="$destDir" \
+			--skip-build
+	);
 }
 
 

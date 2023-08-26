@@ -24,6 +24,13 @@ PackageWarnings()
 }
 
 
+PackageBuild()
+{
+	printf 'you forgot to override PackageBuild()!!!\n';
+	exit 1;
+}
+
+
 PackagePostBuild()
 {
 	return 0;

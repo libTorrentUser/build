@@ -8,7 +8,7 @@ source ../script/postbuild-python.sh
 
 PackageBuildDependencies()
 {
-	printf 'python';
+	printf 'python-pip';
 }
 
 
@@ -28,6 +28,8 @@ PackageBuild()
 
 	local package='python-pygments';
 
+	printenv | sort;
+
 	local sourceDir;	
 	sourceDir=$(./latest.sh \
 		--host='pypi' \
@@ -38,31 +40,26 @@ PackageBuild()
 		Die "unable to retrieve the latest version tar";
 	fi
 
-	DieIfFails cd "$sourceDir";
-
 	LogErr 'building...'
-	DieIfFails python setup.py build \
-		-j $npp;
-		
-	LogErr 'installing...'
-	DieIfFails python setup.py install \
-		--prefix=$prefix \
-		--optimize=2 \
-		--root="$destDir"
+	DieIfFails python -OO -m pip install \
+		--no-cache-dir \
+		--no-deps \
+		--prefix="$prefix" \
+		--root="$destDir" \
+		"$sourceDir";
 }
 
 
 PackagePostBuild()
 {	
 	local prefix="$1";
-	local destDir="$2";
-	local binDir="$3";
+	#local destDir="$2";
+	#local binDir="$3";
 	local envVarsFile="$4";
+	local rootDir="$5";
 
 	PostBuildPython \
-		'python-pygments' \
 		"$prefix" \
-		"$destDir" \
-		"$binDir" \
+		"$rootDir" \
 		"$envVarsFile";
 }

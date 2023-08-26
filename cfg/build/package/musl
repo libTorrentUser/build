@@ -47,14 +47,7 @@ PackageBuild()
 	fi
 
 	# apply all patches
-	local patchDir="../patch/${package}";
-	if [ $(CountItems "$patchDir") -gt 0 ]; then
-		for p in "$patchDir/"*; do
-			p=$(readlink -f "$p");
-			printf 'applying patch %s\n' "$p";
-			DieIfFails patch -p1 -i "$p" -d "$sourceDir";
-		done;
-	fi
+	DieIfFails ./patch.sh "$package" "$sourceDir";
 
 	
 	DieIfFails ./make.sh \

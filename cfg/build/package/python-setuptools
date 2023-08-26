@@ -19,23 +19,7 @@ PackageRuntimeDependencies()
 
 PackageWarnings()
 {
-	printf 'not sure if the env var SETUPTOOLS_INSTALL_WINDOWS_SPECIFIC_FILES really needs to be set. And if does, maybe we can just pass it to the function call, instead of exporting it';
-}
-
-
-PackagePostBuild()
-{	
-	local prefix="$1";
-	local destDir="$2";
-	local binDir="$3";
-	local envVarsFile="$4";
-
-	PostBuildPython \
-		'python-setuptools' \
-		"$prefix" \
-		"$destDir" \
-		"$binDir" \
-		"$envVarsFile";
+	return 0;
 }
 
 
@@ -64,22 +48,36 @@ PackageBuild()
 		Die "unable to retrieve the latest version tar";
 	fi
 
-	SETUPTOOLS_INSTALL_WINDOWS_SPECIFIC_FILES=0;
-	export SETUPTOOLS_INSTALL_WINDOWS_SPECIFIC_FILES;
-	
-	DieIfFails cd "$sourceDir";
+	(
+		DieIfFails cd "$sourceDir";
 
-	LogErr 'building...'
-	DieIfFails python setup.py build \
-		-j $npp;
+		LogErr 'building...'
+
+		SETUPTOOLS_INSTALL_WINDOWS_SPECIFIC_FILES=0 \
+		DieIfFails python setup.py build \
+			-j $npp;
+			
+		LogErr 'installing...'
 		
-	LogErr 'installing...'
-	
-	DieIfFails python setup.py install \
-		--prefix=$prefix \
-		--optimize=2 \
-		--root="$destDir" \
-		--skip-build
+		DieIfFails python setup.py install \
+			--prefix=$prefix \
+			--optimize=2 \
+			--root="$destDir" \
+			--skip-build
+	);
+}
 
-	unset SETUPTOOLS_INSTALL_WINDOWS_SPECIFIC_FILES;
+
+PackagePostBuild()
+{	
+	local prefix="$1";
+	#local destDir="$2";
+	#local binDir="$3";
+	local envVarsFile="$4";
+	local rootDir="$5";
+
+	PostBuildPython \
+		"$prefix" \
+		"$rootDir" \
+		"$envVarsFile";
 }
