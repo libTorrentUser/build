@@ -5,7 +5,7 @@
 # build using the exact versions that were used when a libjxl release was 
 # created
 
-source script.lib.sh
+. ../script/lib.sh
 
 
 PackageBuildDependencies()

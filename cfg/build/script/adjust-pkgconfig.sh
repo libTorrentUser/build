@@ -8,7 +8,7 @@ _prefix=;
 _rootDir=;
 
 
-source script.lib.sh
+. ./lib.sh
 
 
 

@@ -14,7 +14,7 @@ _versionMajor=;
 _tarExtensions="xz gz bz bz2";
 
 
-source /usr/local/bin/script.lib.sh
+. ./lib.sh
 
 
 PrintUsage()
@@ -39,6 +39,9 @@ PrintUsage()
 	must be used in conjunction with --host="github". See the comments on --host
 	for more info.
 
+--gnome-ignore8x
+	see --gnome-ignore9x
+	
 --gnome-ignore9x
 	useful when dealing with GTK related packages because GTK devs are insane
 	and decided that the .9x branches are actualy betas of the next major 

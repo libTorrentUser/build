@@ -1,6 +1,6 @@
 #!/bin/sh
 
-source script.lib.sh
+. ../script/lib.sh
 
 
 
@@ -61,6 +61,8 @@ PackageBuild()
 		Die "unable to retrieve the latest version tar";
 	fi
 
+	DieIfFails ./patch.sh "$package" "$sourceDir";
+
 	CC=cc-no.lto DieIfFails ./make.sh \
 		-b="$buildDir" \
 		-s="$sourceDir" \
@@ -69,23 +71,22 @@ PackageBuild()
 		--configure-options="\
 			--prefix=$prefix \
 			--buildtype=release \
-			-Db_ndebug=true \
-			-Db_lto=true \
-			-Dcpp_rtti=false \
-			-Dgles1=disabled \
-			-Dplatforms=x11 \
-			-Dstrip=true \
-			-Dvalgrind=disabled \
+			-D b_colorout=auto \
+			-D b_lto=true \
+			-D b_ndebug=true \
+			-D cpp_rtti=false \
+			-D gles1=disabled \
+			-D platforms=x11 \
+			-D strip=true \
+			-D valgrind=disabled \
 			" \
 		--cmd-build='ninja' \
 		--cmd-install='meson' \
 		--install-options="install --destdir=$destDir";
 
-	for s in dri egl gbm gl glesv2 xatracker; do
-		DieIfFails ./adjust-pkgconfig.sh \
-			-p="$s" \
-			-d="$destDir" \
-			--prefix="$prefix" \
-			-o="${dirBin}/pkgconfig";
-	done;
+	DieIfFails ./adjust-pkgconfig.sh \
+		-d="$destDir" \
+		--prefix="$prefix" \
+		-o="${dirBin}/pkgconfig" \
+		-r="$dirRoot";
 }

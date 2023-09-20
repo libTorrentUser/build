@@ -7,7 +7,7 @@ _outDir=;
 _prefix=;
 
 
-source script.lib.sh
+. ./lib.sh
 
 
 

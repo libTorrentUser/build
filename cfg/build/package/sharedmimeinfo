@@ -1,6 +1,6 @@
 #!/bin/sh
 
-source script.lib.sh
+. ../script/lib.sh
 
 
 
@@ -57,7 +57,7 @@ PackageBuild()
 			--default-library=both \
 			-D buildtype=release \
 			-D b_lto=true \
-			-D update-mimedb=false \
+			-D update-mimedb=true \
 			" \
 		--cmd-build='meson compile' \
 		--dest-dir="$destDir" \
@@ -71,5 +71,26 @@ PackageBuild()
 		--prefix="$prefix" \
 		-o="$pkgconfigDir" \
 		-r="$dirRoot";
+}
 
+
+PackagePostBuild()
+{	
+	local prefix="$1";
+	local destDir="$2";
+	local binDir="$3";
+	local envVarsFile="$4";
+	local rootDir="$5";
+
+	# without this, crap like glib-compile-resources will complain that it is
+	# unable to recognize image formats. Happened to me when trying to compile
+	# gtk+3 (it calls glib-compile-resources)
+	#
+	# shared-mime-info must have been built with "update-mimedb=true" or 
+	# "update-mime-database" must have been called after the build, otherwise
+	# the directory "mime" (root/prefix/share/mime) will be empty. It must 
+	# contain image types and all that jazz
+	if EnvAddPackage "$envVarsFile" 'sharedmimeinfo'; then			
+		EnvPathPrepend "$envVarsFile" "XDG_DATA_DIRS" "${rootDir}${prefix}/share";
+	fi
 }

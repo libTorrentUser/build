@@ -1,0 +1,79 @@
+#!/bin/sh
+
+. ../script/lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+glib
+meson
+ninja
+';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageWarnings()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+	local dirRoot="$6";
+	
+	local package='atk';
+
+	local sourceDir;
+	sourceDir=$(./latest.sh \
+		--package="atk" \
+		--host='gnome' \
+		--version-major='2' \
+		--gnome-ignore8x \
+		--gnome-ignore9x \
+		-b="$buildDir"
+		);
+
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+	
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--cmd-configure='meson' \
+		--configure-options="\
+			--prefix=$prefix \
+			--default-library=both \
+			-D buildtype=release \
+			-D b_lto=true \
+			-D docs=false \
+			-D introspection=false \
+			" \
+		--cmd-build='meson compile' \
+		--dest-dir="$destDir" \
+		--cmd-install='meson' \
+		--install-options="install";
+
+	local pkgconfigDir="$dirBin/pkgconfig";
+
+	DieIfFails ./adjust-pkgconfig.sh \
+		-d="$destDir" \
+		--prefix="$prefix" \
+		-o="$pkgconfigDir" \
+		-r="$dirRoot";
+
+}

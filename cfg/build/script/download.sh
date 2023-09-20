@@ -7,7 +7,7 @@ _tmpDir=;
 _urlTar=;
 
 
-source /usr/local/bin/script.lib.sh
+. ./lib.sh
 
 
 PrintUsage()

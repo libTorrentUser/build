@@ -1,8 +1,8 @@
 #!/bin/sh
 
-source script.lib.sh
+. ../script/lib.sh
 
-source ../script/build-xorg-lib.sh
+. ../script/build-xorg-lib.sh
 
 
 

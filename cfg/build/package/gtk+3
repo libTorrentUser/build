@@ -1,19 +1,22 @@
 #!/bin/sh
 
-source script.lib.sh
+. ../script/lib.sh
 
 
 
 PackageBuildDependencies()
 {
 	printf '
+atk
 gdkpixbuf
 glib
 libepoxy
+libxi
 meson
 ninja
 pango
 sharedmimeinfo
+libxkbcommon
 ';
 }
 
@@ -54,6 +57,8 @@ PackageBuild()
 	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
 		Die "unable to retrieve the latest version tar";
 	fi
+
+	DieIfFails ./patch.sh "$package" "$sourceDir";
 	
 	DieIfFails ./make.sh \
 		-b="$buildDir" \
@@ -71,6 +76,7 @@ PackageBuild()
 			-D installed_tests=false \
 			-D man=false \
 			-D tests=false \
+			-D wayland_backend=false \
 			" \
 		--cmd-build='meson compile' \
 		--dest-dir="$destDir" \
@@ -80,7 +86,6 @@ PackageBuild()
 	local pkgconfigDir="$dirBin/pkgconfig";
 
 	DieIfFails ./adjust-pkgconfig.sh \
-		-p="$package" \
 		-d="$destDir" \
 		--prefix="$prefix" \
 		-o="$pkgconfigDir" \

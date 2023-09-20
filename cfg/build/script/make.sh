@@ -29,7 +29,7 @@ _sourceDir=;
 
 
 
-source /usr/local/bin/script.lib.sh
+. ./lib.sh
 
 
 PrintUsage()
@@ -397,12 +397,14 @@ InstallToDestDir()
 				$_installOptions \
 				${_destDir:+--destdir "$_destDir"} \
 				--no-rebuild \
+				--strip \
 				-C "$_objDir";
 		
 			 DieIfFails meson \
 				$_installOptions \
 				${_destDir:+--destdir "$_destDir"} \
 				--no-rebuild \
+				--strip \
 				-C "$_objDir" \
 				;				
 		;;

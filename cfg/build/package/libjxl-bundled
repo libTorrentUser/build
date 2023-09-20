@@ -8,7 +8,7 @@
 # package instead.
 
 
-source script.lib.sh
+. ../script/lib.sh
 
 
 

@@ -1,0 +1,10 @@
+--- src/src/gallium/drivers/r600/sfn/sfn_valuefactory.cpp
++++ new/src/gallium/drivers/r600/sfn/sfn_valuefactory.cpp
+@@ -32,6 +32,7 @@
+ 
+ #include <algorithm>
+ #include <iostream>
++#include <limits>
+ #include <queue>
+ #include <sstream>
+ 

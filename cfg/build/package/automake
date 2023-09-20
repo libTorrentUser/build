@@ -1,9 +1,9 @@
 #!/bin/sh
 
-source script.lib.sh
+. ../script/lib.sh
 
-source ../script/build-gnu.sh
-source ../script/env.sh
+. ../script/build-gnu.sh
+. ../script/env.sh
 
 
 PackageBuildDependencies()

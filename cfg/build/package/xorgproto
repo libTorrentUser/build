@@ -1,8 +1,8 @@
 #!/bin/sh
 
-source script.lib.sh
+. ../script/lib.sh
 
-source ../script/build-xorg-proto.sh
+. ../script/build-xorg-proto.sh
 
 
 PackageBuildDependencies()

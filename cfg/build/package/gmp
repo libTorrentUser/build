@@ -1,8 +1,8 @@
 #!/bin/sh
 
-source script.lib.sh
+. ../script/lib.sh
 
-source ../script/build-gnu.sh
+. ../script/build-gnu.sh
 
 
 PackageBuildDependencies()

@@ -4,7 +4,7 @@
 set -o pipefail
 
 
-source script.lib.sh
+. ../script/lib.sh
 
 
 

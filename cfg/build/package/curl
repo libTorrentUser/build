@@ -1,12 +1,14 @@
 #!/bin/sh
 
-source script.lib.sh
+. ../script/lib.sh
 
 
 
 PackageBuildDependencies()
 {
-	printf 'make';
+	printf '
+make
+openssl';
 }
 
 

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-source script.lib.sh
+. ../script/lib.sh
 
 
 
@@ -52,6 +52,8 @@ PackageBuild()
 				enable-ec_nistp_64_gcc_128 \
 				enable-ktls \
 				linux-x86_64 \
+				no-docs \
+				no-tests \
 				shared \
 				-static \
 				" \

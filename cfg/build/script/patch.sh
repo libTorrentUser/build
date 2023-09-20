@@ -1,6 +1,6 @@
 #!/bin/sh
 
-source script.lib.sh
+. ./lib.sh
 
 
 Execute()

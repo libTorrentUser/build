@@ -1,8 +1,8 @@
 #!/bin/sh
 
-source script.lib.sh
+. ../script/lib.sh
 
-source ../script/env.sh
+. ../script/env.sh
 
 
 

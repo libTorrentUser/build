@@ -1,6 +1,6 @@
 #!/bin/sh
 
-source script.lib.sh
+. ../script/lib.sh
 
 
 
@@ -8,6 +8,8 @@ PackageBuildDependencies()
 {
 	printf '
 glib
+libpng
+libjpeg-turbo
 meson
 ninja
 sharedmimeinfo
@@ -58,7 +60,7 @@ PackageBuild()
 			--default-library=both \
 			-D buildtype=release \
 			-D b_lto=true \
-			-D builtin_loaders=[] \
+			-D builtin_loaders=png,jpeg \
 			-D docs=false \
 			-D gtk_doc=false \
 			-D installed_tests=false \
@@ -79,4 +81,29 @@ PackageBuild()
 		-o="$pkgconfigDir" \
 		-r="$dirRoot";
 
+}
+
+
+PackagePostBuild()
+{	
+	local prefix="$1";
+	local destDir="$2";
+	local binDir="$3";
+	local envVarsFile="$4";
+	local rootDir="$5";
+
+	# ensure gdkpixbuf will search for modules in our fake root
+	if EnvAddPackage "$envVarsFile" 'gdkpixbuf'; then
+		local dir="$(
+			find "${rootDir}${prefix}/lib/gdk-pixbuf-"*/*/loaders -type d |
+			sort -Vr |
+			head -n 1
+			)";
+
+		if [ -z "$dir" ]; then
+			Die 'unable to locate the gdk-pixbuf module directory';			
+		fi
+			
+		EnvPathPrepend "$envVarsFile" "GDK_PIXBUF_MODULEDIR" "$dir";
+	fi
 }
