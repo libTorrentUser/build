@@ -7,6 +7,7 @@
 PackageBuildDependencies()
 {
 	printf '
+at-spi2-core
 atk
 gdkpixbuf
 glib
@@ -57,8 +58,6 @@ PackageBuild()
 	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
 		Die "unable to retrieve the latest version tar";
 	fi
-
-	DieIfFails ./patch.sh "$package" "$sourceDir";
 	
 	DieIfFails ./make.sh \
 		-b="$buildDir" \
@@ -81,7 +80,7 @@ PackageBuild()
 		--cmd-build='meson compile' \
 		--dest-dir="$destDir" \
 		--cmd-install='meson' \
-		--install-options="install-strip";
+		--install-options="install";
 
 	local pkgconfigDir="$dirBin/pkgconfig";
 

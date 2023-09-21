@@ -473,6 +473,20 @@ InitializeSearchPaths()
 	# LIBRARY_PATH and LD_LIBRARY_PATH
 	#local libtoolDir="${_dirBin}/lib";
 	#DieIfFails mkdir -p "$libtoolDir";
+
+	# without this, crap like glib-compile-resources will complain that it is
+	# unable to recognize image formats. Happened to me when trying to compile
+	# gtk+3 (it calls glib-compile-resources)
+	#
+	# Tehcnically glib-compile-resources really needs a dir named "mime" that
+	# should be inside this directory. And that mime dir should have all kinds
+	# of mimes inside it. If your is empty and you are getting obscure "unable
+	# to recognize image format" errors, make sure that the "mime" is has been
+	# populated. "sharedmimeinfo" is a package that does that.
+	local dirRootShare="${dirRootPrefixed}/share";
+	DieIfFails mkdir -p "$dirRootShare";
+	XDG_DATA_DIRS=$(PathPrepend "$XDG_DATA_DIRS" "$dirRootShare");
+	export XDG_DATA_DIRS;
 }
 
 

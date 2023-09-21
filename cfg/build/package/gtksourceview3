@@ -10,7 +10,7 @@ PackageBuildDependencies()
 #automake autoconf libtool
 	printf '
 glib
-gtk+3
+gtk+3-no.dbus
 make
 ';
 }

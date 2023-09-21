@@ -6,10 +6,17 @@
 
 PackageBuildDependencies()
 {
-	printf '
+	printf '	
+atk
+gdkpixbuf
+glib
+libepoxy
+libxi
 meson
 ninja
-libxml2
+pango
+sharedmimeinfo
+libxkbcommon
 ';
 }
 
@@ -35,18 +42,23 @@ PackageBuild()
 	local dirBin="$5";
 	local dirRoot="$6";
 	
-	local package='shared-mime-info';
+	local package='gtk+3-no.dbus';
 
 	local sourceDir;
 	sourceDir=$(./latest.sh \
-		--package='1205' \
-		--host='gitlab' \
+		--package="gtk+" \
+		--host='gnome' \
+		--version-major='3' \
+		--gnome-ignore8x \
+		--gnome-ignore9x \
 		-b="$buildDir"
 		);
 
 	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
 		Die "unable to retrieve the latest version tar";
 	fi
+
+	DieIfFails ./patch.sh "$package" "$sourceDir";
 	
 	DieIfFails ./make.sh \
 		-b="$buildDir" \
@@ -57,7 +69,14 @@ PackageBuild()
 			--default-library=both \
 			-D buildtype=release \
 			-D b_lto=true \
-			-D update-mimedb=true \
+			-D demos=false \
+			-D examples=false \
+			-D gtk_doc=false \
+			-D introspection=false \
+			-D installed_tests=false \
+			-D man=false \
+			-D tests=false \
+			-D wayland_backend=false \
 			" \
 		--cmd-build='meson compile' \
 		--dest-dir="$destDir" \
@@ -71,4 +90,5 @@ PackageBuild()
 		--prefix="$prefix" \
 		-o="$pkgconfigDir" \
 		-r="$dirRoot";
+
 }
