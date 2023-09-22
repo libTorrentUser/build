@@ -1,0 +1,85 @@
+#!/bin/sh
+
+. ../script/lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+autoconf
+automake
+libtool
+make
+';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageWarnings()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+	local dirRoot="$6";
+	
+	local package='libao';
+
+	local sourceDir;
+	sourceDir=$(./latest.sh \
+		--package="xiph/libao" \
+		--host='github-tag' \
+		-b="$buildDir"
+		);
+
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+
+
+	(
+		DieIfFails cd "$sourceDir";
+
+		DieIfFails autoreconf -if;
+	);
+
+	if [ $? -ne 0  ]; then
+		Die "call to autoreconf failed!";
+	fi
+
+
+	DieIfFails ./patch.sh "$package" "$sourceDir";
+
+	
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--configure-options="\
+			--prefix=$prefix \
+			--enable-shared \
+			--enable-static \
+			" \
+		--dest-dir="$destDir" \
+		--install-options="install-strip";
+
+
+	DieIfFails ./adjust-pkgconfig.sh \
+		-d="$destDir" \
+		--prefix="$prefix" \
+		-o="$dirBin/pkgconfig" \
+		-r="$dirRoot";
+
+}
