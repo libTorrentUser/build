@@ -31,3 +31,12 @@
  
    backend_immodules += ['xim']
  
+@@ -582,8 +581,6 @@
+   if xdamage_dep.found()
+     x11_pkgs += ['xdamage']
+   endif
+-
+-  atk_pkgs += ['atk-bridge-2.0']
+ 
+   cdata.set('HAVE_XDAMAGE', xdamage_dep.found() ? 1 : false)
+   cdata.set('HAVE_XCURSOR', xcursor_dep.found() ? 1 : false)

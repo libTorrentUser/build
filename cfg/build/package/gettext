@@ -7,7 +7,9 @@
 
 PackageBuildDependencies()
 {
-	printf 'make';
+	printf '
+autoconf
+make';
 }
 
 
@@ -18,7 +20,7 @@ PackageBuild()
 	# So far, gettext is the only gnu package that (kind of) breaks with 
 	# BuildGNU defaults (actually, it is the stupid glib, that depends on it, 
 	# that breaks), so, since it is the only one, for now, we'll manualy build
-	# it instead of calling BuildGNYU
+	# it instead of calling BuildGNU
 	#BuildGNU 'gettext' "$1" "$2" "$3";
 
 	local buildDir="$1";
@@ -26,6 +28,7 @@ PackageBuild()
 	local destDir="$3";
 	#local npp="$4";
 	local dirBin="$5";
+	local dirRoot="$6";
 	
 	local package='gettext';
 
@@ -40,8 +43,21 @@ PackageBuild()
 		-s="$sourceDir" \
 		--configure-options="\
 			--prefix=$prefix \
+			--disable-csharp \
+			--disable-java \
 			--enable-nls \
-			--disable-rpath" \
+			--disable-rpath \
+			--enable-shared \
+			--enable-static \
+			" \
 		--dest-dir="$destDir" \
 		--install-options="install-strip";
+
+	# edit the paths in these tools put them in our bin dir, so when 
+	# other packages use them, they will search for stuff inside our work dir
+	for f in autopoint; do
+		local destFile="${dirBin}/${f}";
+		DieIfFails sed "s;\"$prefix\";\"${dirRoot}${prefix}\";" "${destDir}${prefix}/bin/${f}" > "$destFile";
+		DieIfFails chmod +x "$destFile";
+	done;
 }

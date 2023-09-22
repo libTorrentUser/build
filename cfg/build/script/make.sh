@@ -321,6 +321,8 @@ Configure()
 				$_configureOptions;
 		;;
 		meson)
+			_configureOptions="-D b_colorout=auto $_configureOptions";
+			
 			SaveCommandScript 'configure.sh' "cd $_sourceDir;" meson setup "${_objDir}" $_configureOptions;
 		
 			DieIfFails cd "$_sourceDir";
@@ -348,12 +350,6 @@ Build()
 		printf 'Skippiing build step\n';
 		return 0;
 	fi
-
-	case "$_cmdBuild" in		
-		meson*)
-		_buildOptions="-D b_colorout=auto $_buildOptions";
-		;;
-	esac	
 	
 	SaveCommandScript 'build.sh' \
 		$_cmdBuild \

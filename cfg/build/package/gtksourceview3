@@ -6,9 +6,9 @@
 
 PackageBuildDependencies()
 {
-# gtk+3.0-dev libxml2-dev gobject-introspection-dev
-#automake autoconf libtool
 	printf '
+autoconf
+automake
 glib
 gtk+3-no.dbus
 make
@@ -51,22 +51,45 @@ PackageBuild()
 	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
 		Die "unable to retrieve the latest version tar";
 	fi
+
+
+	(
+		DieIfFails cd "$sourceDir";
+
+		# hack to avoid having to install gtk-doc just to be able to call
+		# autoreconf
+		GTKDOCIZE=echo \
+		DieIfFails autoreconf -fi;
+	);
+
+	if [ $? -ne 0  ]; then
+		Die "call to autoreconf failed!";
+	fi
+
+
+	DieIfFails ./patch.sh "$package" "$sourceDir";
+
 	
 	DieIfFails ./make.sh \
 		-b="$buildDir" \
 		-s="$sourceDir" \
+		--in-source \
 		--configure-options="\
 			--prefix=$prefix \
+			--disable-glade-catalog \
+			--disable-gtk-doc \
+			--disable-installed-tests \
+			--disable-instrospection \
+			--disable-valgrind \
 			" \
+		--dest-dir="$destDir" \
 		--install-options="install-strip";
 
-	local pkgconfigDir="$dirBin/pkgconfig";
 
 	DieIfFails ./adjust-pkgconfig.sh \
-		-p="$package" \
 		-d="$destDir" \
 		--prefix="$prefix" \
-		-o="$pkgconfigDir" \
+		-o="$dirBin/pkgconfig" \
 		-r="$dirRoot";
 
 }
