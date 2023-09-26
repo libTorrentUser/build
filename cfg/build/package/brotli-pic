@@ -7,5 +7,5 @@ source ../package/brotli
 
 PackageBuild()
 {
-	PackageBuild_Brotli '--with-pic' "$@";
+	PackageBuild_Brotli 'ON' "$@";
 }

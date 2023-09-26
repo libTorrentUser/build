@@ -237,7 +237,7 @@ ValidateCommandLine()
 	DieIfFails DeleteAllFiles "$_cmdDir";
 
 	if [ -z "$_npp" ]; then
-		_npp=$(npproc.sh);
+		_npp=$( ./npproc.sh );
 		if [ $? -ne 0  ]; then
 			Die "unable to retrieve the number of physical processors";
 		fi	

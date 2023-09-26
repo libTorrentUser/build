@@ -16,6 +16,7 @@ libvdpau
 llvm-dev
 libxext
 libxfixes
+libxrandr
 libxshmfence
 libxxf86vm
 meson
@@ -23,7 +24,6 @@ ninja
 python-mako
 python-markupsafe
 python-pygments
-xrandr
 ';
 }
 

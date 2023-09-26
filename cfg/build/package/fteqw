@@ -12,13 +12,13 @@ gnutls
 libjpeg-turbo
 libpng
 libvorbis
+libxrandr
+libxcursor
 make
 mesa
 opus
 speex
 speexdsp
-xcursor
-xrandr
 ';
 }
 

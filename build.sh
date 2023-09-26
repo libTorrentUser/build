@@ -43,7 +43,7 @@ _buildProcessID=;
 
 
 #  "source" these libs
-. /usr/local/bin/script.lib.sh
+. "${_dirConfig}/script/lib.sh"
 
 
 PrintUsage()
@@ -483,8 +483,43 @@ InitializeSearchPaths()
 	# of mimes inside it. If your is empty and you are getting obscure "unable
 	# to recognize image format" errors, make sure that the "mime" is has been
 	# populated. "sharedmimeinfo" is a package that does that.
+	#
+	# The real problem here is that someone realized that the way stuff was 
+	# being organized inside the system, with stuff going into /etc some other
+	# into /share a bunch of other intro those freaking hidden "dot" files was
+	# a mess. So they decided to create another mess to fix it
+	#
+	# https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
+	#
+	# Of course apps that rely on this mess, mainly gtk-pixbuf (which is what
+	# glib-compile-resources is probably using to load images, fail badly if
+	# this is not set according to what it think is proper. And, of course, it
+	# says nothing about it. There is not a single mention about anything XDG
+	# inside gdk-pixbuf docs. The only way I know about it is because of a 
+	# couple of random internet heroes mentioning it.
+	#
+	# Anyway, apparently, if this env var is not set, apps will (probably???)
+	# search for stuff in 
+	#
+	# /usr/local/share
+	# /usr/share	
+	#
+	# Now, if this is set, then it should contain at least those two dirs plus
+	# any other dir you need. Because the moment it is set, apps (or at least
+	# gdk stuff) will stop searching for stuff in those two dirs. Even if this
+	# var is set to nothing. The moment it exists in the system, it'd better
+	# be pointing to a place where glib can find the mime database or you are 
+	# (silently) screwed. You can see the magic happening in this file
+	#
+	# glib/gio/xdgmime/xdgmime.c
+	#
+	#
+	# Because of that, we always make sure to set the dir we need and the 
+	# default ones.
 	local dirRootShare="${dirRootPrefixed}/share";
 	DieIfFails mkdir -p "$dirRootShare";
+	XDG_DATA_DIRS=$(PathPrepend "$XDG_DATA_DIRS" "/usr/share");
+	XDG_DATA_DIRS=$(PathPrepend "$XDG_DATA_DIRS" "/usr/local/share");
 	XDG_DATA_DIRS=$(PathPrepend "$XDG_DATA_DIRS" "$dirRootShare");
 	export XDG_DATA_DIRS;
 }
@@ -515,7 +550,7 @@ Initialize()
 
 	# number of physical processors
 	if [ -z "$_npp" ]; then
-		_npp=$(npproc.sh);
+		_npp=$( "${_dirConfig}/script/npproc.sh" );
 		if [ $? -ne 0  ]; then
 			Die "unable to retrieve the number of physical processors";
 		fi	

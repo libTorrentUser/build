@@ -17,10 +17,10 @@ libpng
 libx11
 libxcb
 libxext
+libxrender
 meson
 ninja
 pixman
-xrender
 zlib
 ';
 }

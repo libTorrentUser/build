@@ -7,9 +7,7 @@
 PackageBuildDependencies()
 {
 	printf '
-automake
-autoconf
-libtool
+cmake
 make
 ';
 }
@@ -23,7 +21,7 @@ PackageRuntimeDependencies()
 
 PackageWarnings()
 {
-	printf 'v1.0.9 configure script seems to be unable to detect the correct values for its --build and --host options. And if those are set incorrectly the build fails or not everything gets built. Currently we manually calling config.guess to set those values\n';
+	return 0;	
 }
 
 
@@ -57,35 +55,33 @@ PackageBuild_Brotli()
 	#apply all patches
 	DieIfFails ./patch.sh "$package" "$sourceDir";
 
-
-	Log 'executing bootstrap script...'
-	printenv | sort;
-	DieIfFails cd "$sourceDir"
-	DieIfFails "./bootstrap";
-	DieIfFails cd -;
-
-	# the configure script seems to very... bogus. If you do not set 
-	# --build or --host, it will say that libtool cannot build shared libs
-	# and will not build shared libs
-	local cfgHost=;
-	cfgHost=$("${sourceDir}/config.guess"); 
-	if [ $? -ne 0 ] || [ -z "$cfgHost" ]; then
-		Die "call to config.guess failed";
-	fi
-
-	local cfgBuild="${cfgHost%%-*}";
+	# tell cmake to search for stuff in our "fake" sys root dir
+	local packageSearchPath="${_dirRoot}/${prefix}";
 	
-	DieIfFails ./make.sh \
-		-b="$buildDir" \
-		-s="$sourceDir" \
-		--configure-options="\
-			--prefix=$prefix \
-			--build=$cfgBuild \
-			--host=$cfgHost \
-			$withPIC \
-			" \
-		--dest-dir="$destDir" \
-		--install-options="install-strip";
+	# build both shared and static libs
+	DieIfFails mkdir -p "$destDir";
+	
+	for shared in True False; do
+		local destDirTmp="$destDir-$shared";
+	
+		DieIfFails ./make.sh \
+			-b="$buildDir" \
+			-s="$sourceDir" \
+			--cmd-configure='cmake' \
+			--configure-options="\
+				-D BUILD_SHARED_LIBS=$shared \
+				-D BUILD_TESTING=OFF \
+				-D CMAKE_BUILD_TYPE=Release \
+				-D CMAKE_INSTALL_PREFIX=$prefix \
+				-D CMAKE_POSITION_INDEPENDENT_CODE=$withPIC \
+				-D CMAKE_PREFIX_PATH=$packageSearchPath \
+				" \
+			--dest-dir="$destDirTmp" \
+			--install-options="install/strip";
+
+			DieIfFails cp -rl "$destDirTmp/". "$destDir/";
+			DieIfFails rm -rf "$destDirTmp";
+	done
 
 	local pkgconfigDir="$dirBin/pkgconfig";
 		
@@ -99,5 +95,5 @@ PackageBuild_Brotli()
 
 PackageBuild()
 {
-	PackageBuild_Brotli '' "$@";
+	PackageBuild_Brotli 'OFF' "$@";
 }

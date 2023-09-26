@@ -7,7 +7,7 @@
 
 PackageBuildDependencies()
 {
-	printf 'automake make';
+	printf 'm4 make';
 }
 
 
@@ -15,3 +15,52 @@ PackageBuild()
 {
 	BuildGNU 'autoconf' "$1" "$2" "$3";
 }
+
+
+PackagePostBuild()
+{	
+	Log 'Post build...';
+	
+	local prefix="$1";
+	local destDir="$2";
+	local binDir="$3";
+	local envVarsFile="$4";
+	local rootDir="$5";
+
+	Prepend()
+	{
+		local path="$1";
+		local vars="$2";
+		
+		if [ -n "$path" ]; then
+			for v in $vars; do
+				EnvPathPrepend "$envVarsFile" "$v" "$path";
+			done;
+		fi;
+	}
+
+	# export these env vars so other packages can use autoconf's perl stuff. But
+	# only do it if it hasn't been done yet
+	local shareAutoconfDir="${rootDir}${prefix}/share/autoconf";
+	if EnvAddPackage "$envVarsFile" 'automake'; then
+		Prepend "$shareAutoconfDir" 'PERL5LIB autom4te_perllibdir AC_MACRODIR';		
+	fi	
+	
+	# put a copy of autoconf in our bin dir and edit the search paths there, so
+	#  when other packages use it, they will search for stuff inside our work dir
+	for f in autoconf autoupdate; do
+		local destFile="${binDir}/${f}";
+		DieIfFails sed "s;'$prefix;'${rootDir}${prefix};" "${destDir}${prefix}/bin/${f}" > "$destFile";
+		DieIfFails chmod +x "$destFile";
+	done;
+
+	# autom4te has a configuration file named autom4te.cfg which, as you 
+	# guesseed contains a bunch of hardcoded directories. So we copy it to our
+	# bin dir, modify those patha and use the AUTOM4TE_CFG env var to tell
+	# autom4te the config file we want it to use
+	local patchedAutom4teCfg="${binDir}/autom4te.cfg";
+	DieIfFails sed "s;'$prefix;'${rootDir}${prefix};" "${shareAutoconfDir}/autom4te.cfg" > "$patchedAutom4teCfg";
+
+	DieIfFails EnvPathPrepend "$envVarsFile" "AUTOM4TE_CFG" "$patchedAutom4teCfg";
+}
+

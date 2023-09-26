@@ -8,8 +8,8 @@
 PackageBuildDependencies()
 {
 	printf '
+libxrender
 make
-xrender
 ';
 
 }

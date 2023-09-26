@@ -8,10 +8,8 @@
 PackageBuildDependencies()
 {
 	printf '
-fontconfig
-freetype2
-libxrender
 make
+libxrender
 ';
 
 }
@@ -33,7 +31,7 @@ PackageBuild()
 	local dirRoot="$6";
 	
 	BuildXOrgLib \
-		'libXft' \
+		'libXrandr' \
 		"$buildDir" \
 		"$prefix" \
 		"$destDir" \
