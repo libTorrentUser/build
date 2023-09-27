@@ -568,7 +568,7 @@ Initialize()
 	# this is where packages will store enviroment variables needed to make
 	# them work correctly when used as a dependency to other packages
 	_envVarsFile="${_buildDir}/env.sh";
-	DieIfFails printf '#!/bin/sh\n. ../script/lib.sh\n' > "$_envVarsFile";
+	DieIfFails printf '#!/bin/sh\n. ${_dirConfig}/script/lib.sh\n' > "$_envVarsFile";
 	DieIfFails chmod +x "$_envVarsFile";
 
 	# this is where the build script warnings will be stored

@@ -39,25 +39,37 @@ PackagePostBuild()
 		fi;
 	}
 
+	if ! EnvAddPackage "$envVarsFile" 'autconf'; then
+		# this post build script has already been executed
+		return 0;
+	fi
+
 	# export these env vars so other packages can use autoconf's perl stuff. But
 	# only do it if it hasn't been done yet
 	local shareAutoconfDir="${rootDir}${prefix}/share/autoconf";
-	if EnvAddPackage "$envVarsFile" 'automake'; then
-		Prepend "$shareAutoconfDir" 'PERL5LIB autom4te_perllibdir AC_MACRODIR';		
-	fi	
+	Prepend "$shareAutoconfDir" 'PERL5LIB autom4te_perllibdir AC_MACRODIR';		
 	
 	# put a copy of autoconf in our bin dir and edit the search paths there, so
 	#  when other packages use it, they will search for stuff inside our work dir
-	for f in autoconf autoupdate; do
+	for f in autoconf autoreconf autoupdate; do
 		local destFile="${binDir}/${f}";
 		DieIfFails sed "s;'$prefix;'${rootDir}${prefix};" "${destDir}${prefix}/bin/${f}" > "$destFile";
 		DieIfFails chmod +x "$destFile";
 	done;
 
+	# the autoreconf file we blindly patched above needs one extra adjust -
+	# it hardcodes the path to a couple of auto tools, autoconf among them. But
+	# we need to use our patched version, and not the one in the fake root dir.
+	# In fact, I'm not even sure why these tools have hardcoded path. Perhps
+	# I should just remove it altogether. Our bin dir is always first on PATH,
+	# meaning the system would always pick the script we want if there were no
+	# hardecoded paths.
+	DieIfFails sed -i "s;'${rootDir}${prefix}/bin/autoconf;'${binDir}/autoconf;" "${binDir}/autoreconf";
+
 	# autom4te has a configuration file named autom4te.cfg which, as you 
 	# guesseed contains a bunch of hardcoded directories. So we copy it to our
 	# bin dir, modify those patha and use the AUTOM4TE_CFG env var to tell
-	# autom4te the config file we want it to use
+	# autom4te the config file we want it to use.
 	local patchedAutom4teCfg="${binDir}/autom4te.cfg";
 	DieIfFails sed "s;'$prefix;'${rootDir}${prefix};" "${shareAutoconfDir}/autom4te.cfg" > "$patchedAutom4teCfg";
 
