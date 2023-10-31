@@ -7,7 +7,10 @@
 
 PackageBuildDependencies()
 {
-	printf 'm4 make';
+	printf '
+m4 
+make
+perl';
 }
 
 
@@ -74,5 +77,11 @@ PackagePostBuild()
 	DieIfFails sed "s;'$prefix;'${rootDir}${prefix};" "${shareAutoconfDir}/autom4te.cfg" > "$patchedAutom4teCfg";
 
 	DieIfFails EnvPathPrepend "$envVarsFile" "AUTOM4TE_CFG" "$patchedAutom4teCfg";
+
+	# autoheader goes for a hardcoded autom4te path if this env var does not
+	# exists and points to the one we want it to use. Here we simply set it to
+	# 'autom4te' and the system should pick our own since your bin dir is always
+	# first in PATH.
+	DieIfFails EnvPathPrepend "$envVarsFile" "AUTOM4TE" "autom4te";	
 }
 

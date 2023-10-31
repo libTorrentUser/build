@@ -21,7 +21,8 @@ PackageRuntimeDependencies()
 
 PackageWarnings()
 {
-	printf 'alsa-lib 1.2.6.1 build fails if we force LTO. But it seems to build fine with -flto-partition=none';
+	printf 'alsa-lib 1.2.10 build fails if we force LTO. But it seems to build fine with -flto-partition=none. And we are currently applying a patch (move.string.macro.patch) that was commited upstream and should no longer be needed after v1.2.10';
+	
 }
 
 
@@ -46,6 +47,9 @@ PackageBuild()
 	if [ -z "$sourceDir" ]; then
 		Die 'unable to download the latest source code';
 	fi
+
+	DieIfFails ./patch.sh "$package" "$sourceDir";
+
 	
 	CC="${dirBin}/cc-lto.partition.none" DieIfFails ./make.sh \
 		-b="$buildDir" \
