@@ -75,8 +75,8 @@ PackageBuild()
 
 	# sdl also generates a traditional pkgconfig script. We adjust that one too
 	DieIfFails ./adjust-pkgconfig.sh \
-		-p="sdl2" \
 		-d="$destDir" \
 		--prefix="$prefix" \
-		-o="$dirBin/pkgconfig";
+		-o="$dirBin/pkgconfig" \
+		-r="$dirRoot";
 }

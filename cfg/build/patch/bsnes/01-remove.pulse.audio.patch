@@ -1,0 +1,11 @@
+--- src/ruby/GNUmakefile
++++ new/ruby/GNUmakefile
+@@ -9,7 +9,7 @@
+     ruby += input.quartz #input.carbon
+   else ifeq ($(platform),linux)
+     ruby += video.glx video.glx2 video.xvideo video.xshm
+-    ruby += audio.oss audio.alsa audio.openal audio.pulseaudio audio.pulseaudiosimple audio.ao
++    ruby += audio.oss audio.alsa audio.openal audio.ao
+     ruby += input.sdl input.xlib input.udev
+   else ifeq ($(platform),bsd)
+     ruby += video.glx video.glx2 video.xvideo video.xshm

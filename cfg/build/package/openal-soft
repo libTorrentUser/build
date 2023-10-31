@@ -1,0 +1,76 @@
+#!/bin/sh
+
+. ../script/lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+alsa-lib
+cmake
+';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageWarnings()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+	local dirRoot="$6";
+	
+	local package='openal-soft';
+
+	local sourceDir;
+	sourceDir=$(./latest.sh \
+			--package="openal-soft" \
+			--url='https://openal-soft.org/openal-releases/' \
+			-b="$buildDir"
+			);		
+
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+
+	DieIfFails ./patch.sh "$package" "$sourceDir";
+
+	# tell cmake to search for stuff in our "fake" sys root dir
+	local packageSearchPath="${_dirRoot}/${prefix}";
+	
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--cmd-configure='cmake' \
+		--configure-options="\
+			-D ALSOFT_INSTALL_EXAMPLES=OFF \
+			-D ALSOFT_INSTALL_UTILS=OFF \
+			-D CMAKE_BUILD_TYPE=Release \
+			-D CMAKE_INSTALL_PREFIX=$prefix \
+			-D CMAKE_PREFIX_PATH=$packageSearchPath \
+			" \
+		--dest-dir="$destDir" \
+		--install-options="install/strip";
+
+
+	DieIfFails ./adjust-pkgconfig.sh \
+		-d="$destDir" \
+		--prefix="$prefix" \
+		-o="$dirBin/pkgconfig" \
+		-r="$dirRoot";
+
+}

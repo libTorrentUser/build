@@ -16,7 +16,7 @@ libxrandr
 libxv
 make
 openal-soft
-sdl2
+sdl
 ';
 
 }
@@ -40,7 +40,7 @@ PackageBuild()
 
 	local sourceDir;	
 	sourceDir=$(./latest.sh \
-		--host='githup' \
+		--host='github' \
 		--package="bsnes-emu/${package}" \
 		-b="$buildDir");
 	
@@ -48,14 +48,28 @@ PackageBuild()
 		Die "unable to retrieve the latest version tar";
 	fi
 	
+	DieIfFails ./patch.sh "$package" "$sourceDir";
+
+
+	# NOTE: set lto=false in the build-options below in  case you are forcing a 
+	# build without optimizations otherwise the build is likely to fail during 
+	# the linking step.
 	DieIfFails ./make.sh \
 		-b="$buildDir" \
 		-s="$sourceDir" \
 		--in-source \
 		--no-configure \
+		--no-install \
 		--build-options="
 			-C bsnes \
+			build=performance \
+			hiro=gtk3 \
+			local=true \
 			lto=true \
-		" \
-		--dest-dir="$destDir";
+		";
+
+	LogErr 'installing...'
+	local destDirBin="${destDir}${prefix}/bin";
+	DieIfFails mkdir -p "$destDirBin";
+	DieIfFails cp "${sourceDir}/bsnes/out/bsnes" "${destDirBin}/"
 }
