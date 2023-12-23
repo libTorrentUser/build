@@ -67,7 +67,10 @@ PackageBuild()
 	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
 		Die "unable to download the latest version tar";
 	fi
-		
+
+	# setting man1dir/man3dir to 'none' should disable both the generation and
+	# installation of man pages
+	# https://github.com/perl/perl5/issues/16234
 	DieIfFails ./make.sh \
 		-b="$buildDir" \
 		-s="$sourceDir" \
@@ -75,7 +78,9 @@ PackageBuild()
 		--cmd-configure='Configure' \
 		--configure-options="\
 			-Dprefix=$prefix \
-			-des \
+			-Dman1dir=none \
+			-Dman3dir=none \
+			-des \			
 		" \
 		--dest-dir="$destDir" \
 		--install-options="install-strip";

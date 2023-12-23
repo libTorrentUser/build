@@ -40,7 +40,7 @@ PackageBuild()
 	local sourceDir;
 	sourceDir=$(./latest.sh \
 		--package='887' \
-		--host='gitlab' \
+		--host='gitlab-freedesktop' \
 		-b="$buildDir"
 		);
 

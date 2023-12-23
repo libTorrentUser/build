@@ -61,7 +61,6 @@ PackageBuild()
 		
 		DieIfFails python setup.py install \
 			--prefix=$prefix \
-			--optimize=2 \
 			--root="$destDir" \
 			--skip-build
 	);

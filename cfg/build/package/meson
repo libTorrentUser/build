@@ -8,7 +8,8 @@
 
 PackageBuildDependencies()
 {
-	printf 'python-setuptools';
+	#printf 'python-setuptools';
+	printf 'python-gpep517';
 }
 
 
@@ -18,7 +19,7 @@ PackageRuntimeDependencies()
 }
 
 
-PackageBuild()
+PackageBuild__()
 {
 	local buildDir="$1";
 	local prefix="$2";
@@ -50,6 +51,36 @@ PackageBuild()
 		--optimize=2 \
 		--root="$destDir"
 }
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	local npp="$4";
+	local dirBin="$5";
+
+	local package='meson';
+
+	local sourceDir;	
+	sourceDir=$(./latest.sh \
+		--host='github' \
+		--package="mesonbuild/${package}" \
+		-b="$buildDir");
+	
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+	
+	LogErr 'building...'
+	DieIfFails python -m pip install \
+		--no-deps \
+		--prefix=$prefix \
+		--root="$destDir" \
+		"$sourceDir"
+}
+
 
 
 PackagePostBuild()

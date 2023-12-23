@@ -133,9 +133,9 @@ Download_wget()
 	fi
 	
 	if [ $# -eq 2 ]; then		
-		wget $flags  --directory-prefix "$dir" "$url";
+		wget --directory-prefix "$dir" "$url";
 	elif [ $# -eq 3 ]; then
-		wget $flags --output-document "${dir}/${destFile}" "$url";
+		wget --output-document "${dir}/${destFile}" "$url";
 	else
 		# if you do not redirect stderr to /dev/null you may see some unwanted
 		# stuff being printed like "SSL_INIT"

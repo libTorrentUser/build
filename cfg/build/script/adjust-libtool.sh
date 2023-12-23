@@ -173,7 +173,7 @@ Execute()
 	Log 'Adjusting the libtool .la files...';
 
 	# search for a .la files
-	for f in $(find "$_destDir" -name '*.la' -type f); do
+	for f in $(find "$_destDir" -name '*.la' \( -type f -o -type l \) ); do
 		# now delete or adjust them
 		if [ -n "$_delete" ]; then
 			printf 'deleting %s\n' "$f";

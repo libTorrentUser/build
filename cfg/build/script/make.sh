@@ -264,7 +264,7 @@ environment variables
 	"$_configureOptions" \
 	"$_destDir" \
 	"$_npp" \
-	"$(printenv | sort)";
+	"$(export -p)";
 }
 
 
@@ -282,12 +282,22 @@ SaveCommandScript()
 	#for e in $(printenv | sort); do
 	#	DieIfFails printf 'export %s\n' "$e" >> "$fileName";
 	#done
-	printenv | sort | while IFS= read -r line; do
-	  DieIfFails printf 'export %s\n' "$line" >> "$fileName";
-	done
+
+	# this works, but the variable will not be quoted
+	#printenv | sort | while IFS= read -r line; do
+	#    DieIfFails printf 'export %s\n' "$line" >> "$fileName";
+	#done
+
+	# it seems that "export -p" is a much easier way to do exactly what I wanted
+	# and it also quotes the values
+	DieIfFails export -p  >> "$fileName";
 	
-	printf '\n' >> "$fileName";
-	DieIfFails printf '%s ' "$@" >> "$fileName";
+	# what I didn't know is that simply calling "set" would do exactly what I
+	# wanted - print all env vars correctly quoted. And it is POSIX
+	# https://pubs.opengroup.org/onlinepubs/007904875/utilities/set.html
+	#set >> "$fileName";
+		
+	DieIfFails printf '\n%s\n' "$*" >> "$fileName";
 }
 
 

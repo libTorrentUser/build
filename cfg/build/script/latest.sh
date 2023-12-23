@@ -74,6 +74,13 @@ PrintUsage()
 	"gitlab"
 	package is hosted on gitlab and the latest source code can be retrieved
 	using the "latest release" API, like this
+	https://gitlab.com/api/v4/projects/{projectID}/releases/permalink/latest
+	When using this flag, the value of --packge must be the gitlab project ID.
+	This ID is a number and should be visible right below the project name on
+	its gitlab page or it the "three dots" actions menu
+
+	"gitlab-freedesktop"
+	same as "gitliba", but using freedesktop.org one, as in
 	https://gitlab.freedesktop.org/api/v4/projects/{projectID}/releases/permalink/latest
 	When using this flag, the value of --packge must be the gitlab project ID.
 	This ID is a number and should be visible right below the project name on
@@ -524,10 +531,11 @@ Gnu()
 
 Gitlab()
 {
+	local baseURL="${1-https://gitlab.com}"
 	# $package should be the project numeric ID. For instance, 
 	# "xdg/shared-mimeinfo" ID is 1205. You can discover the project ID by
 	# navigating to its gitlab page. It should be there, right after the name.
-	local url="https://gitlab.freedesktop.org/api/v4/projects/${_package}/releases/permalink/latest";
+	local url="$baseURL/api/v4/projects/${_package}/releases/permalink/latest";
 	
 	local content="$(Download "$url")";
 
@@ -535,7 +543,8 @@ Gitlab()
 	for ext in $_tarExtensions; do
 		url=$( \
 			printf '%s' "$content" | \
-			grep -o 'http[^"]*\.tar\.'"$ext" );
+			grep -o 'http[^"]*\.tar\.'"$ext" | \
+			head -n 1);
 
 		if [ ! -z "$url" ]; then
 			break;
@@ -547,6 +556,12 @@ Gitlab()
 	fi	
 
 	_urlTar="$url";
+}
+
+
+GitlabFreedesktop()
+{
+	Gitlab 'https://gitlab.freedesktop.org';
 }
 
 
@@ -566,6 +581,9 @@ LatestVersion()
 		;;
 		gitlab)
 			Gitlab;
+		;;
+		gitlab-freedesktop)
+			GitlabFreeDesktop;
 		;;
 		gnome)
 			Gnome;

@@ -75,6 +75,6 @@ PackageBuild()
 	#	--prefix="$prefix" \
 	#	-o="${dirBin}/lib";
 	DieIfFails ./adjust-libtool.sh \
-		-d="$dirRoot" \
+		-d="$destDir" \
 		--delete;
 }
