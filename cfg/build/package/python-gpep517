@@ -1,0 +1,71 @@
+#!/bin/sh
+
+. ../script/lib.sh
+
+. ../script/postbuild-python.sh
+
+
+PackageBuildDependencies()
+{
+	printf 'python';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageWarnings()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	local npp="$4";
+	local dirBin="$5";
+
+	local package='python-gpep517';
+
+	# NOTE: last time I tried using the release from the github repo
+	# (pypa/setuptools) it was badly broken and failed during the install,
+	# complaining about being unable to copy a directory named 
+	# "build/scripts-3.10" because it did not exist. Feel free to give it 
+	# another try if you wish.
+	local sourceDir;	
+	sourceDir=$(./latest.sh \
+		--host='github-tag' \
+		--package="projg2/gpep517" \
+		-b="$buildDir");
+	
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+
+	local destDirPrefixed="${destDir}${prefix}";
+
+	DieIfFails DeleteAllFiles "$destDirPrefixed";
+	DieIfFails mkdir -p "$destDirPrefixed";
+	DieIfFails cp -r "${sourceDir}/gpep517" "$destDirPrefixed";
+}
+
+
+PackagePostBuild()
+{	
+	local prefix="$1";
+	#local destDir="$2";
+	#local binDir="$3";
+	local envVarsFile="$4";
+	local rootDir="$5";
+
+	PostBuildPython \
+		"$prefix" \
+		"$rootDir" \
+		"$envVarsFile";
+}

@@ -1,0 +1,107 @@
+#!/bin/sh
+
+. ../script/lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+libjpeg-turbo
+libwebp	
+make	
+zlib
+zstd
+';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageWarnings()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+	local dirRoot="$6";
+	
+	local package='libtiff';
+
+	local sourceDir;
+	sourceDir=$(./latest.sh \
+		--package='4720790' \
+		--host='gitlab' \
+		-b="$buildDir"
+		);
+
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+
+	(
+		for d in obj cmd; do
+			DieIfFails mkdir -p "${buildDir}/${d}";
+		done
+
+		DieIfFails cd "${buildDir}/obj";
+
+		Log "Configuring...";
+
+		local cmdConfigureFile="${buildDir}/cmd/configure.sh";
+		DieIfFails export -p > "$cmdConfigureFile";
+
+		# this would print all the non-exported variables
+		# DieIfFails set >> "$cmdConfigureFile";
+
+		set -- "${sourceDir}/configure" \
+			--enable-options-checking \
+			--prefix="$prefix" \
+			--disable-contrib \
+			--disable-docs \
+			--disable-sphinx \
+			--disable-tests \
+			--disable-tools;
+
+		DieIfFails printf '\n%s\n' "$*" >> "$cmdConfigureFile";
+		
+		DieIfFails "$@";
+
+		# the configure script will generate a "libtool" script file with a 
+		# couple of broken hardcoded paths (not sure why only some of them are
+		# broken, but not all. Then again, autotools...)
+		local libSearchPath="$(printf '%s' "$LIBRARY_PATH" | tr ':' ' ')";
+		DieIfFails sed -i 's;sys_lib_dlsearch_path_spec=";\0'"$libSearchPath"' ;' "${buildDir}/obj/libtool";
+	);
+
+	if [ $? -ne 0  ]; then
+		Die "something went wrong during the 'configure' stage";
+	fi
+
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--no-configure \
+		--dest-dir="$destDir" \
+		--install-options="install-strip";
+
+	local pkgconfigDir="$dirBin/pkgconfig";
+
+	DieIfFails ./adjust-pkgconfig.sh \
+		-d="$destDir" \
+		--prefix="$prefix" \
+		-o="$pkgconfigDir" \
+		-r="$dirRoot";
+
+}
