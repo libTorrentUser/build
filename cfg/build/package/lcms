@@ -1,0 +1,68 @@
+#!/bin/sh
+
+. ../script/lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+libjpeg-turbo
+libtiff
+make
+zlib';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+	local dirRoot="$6";
+
+	local package='lcms';
+
+	local sourceDir=;
+	sourceDir=$(./latest.sh \
+		-b="$buildDir" \
+		--host="github" \
+		--package='mm2/Little-CMS'
+		);
+
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to download the latest version tar";
+	fi
+		
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--configure-options="\
+			--enable-option-checking \
+			--prefix=$prefix \
+			--with-fastfloat \
+			--with-jpeg \
+			--with-threaded \
+			--with-tiff \
+			--with-zlib \
+			" \
+		--dest-dir="$destDir" \
+		--install-options="install-strip";
+
+	local pkgconfigDir="${dirBin}/pkgconfig";
+
+	DieIfFails ./adjust-pkgconfig.sh \
+		-d="$destDir" \
+		--prefix="$prefix" \
+		-o="$pkgconfigDir" \
+		-r="$dirRoot";
+
+}

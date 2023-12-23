@@ -16,6 +16,7 @@ cmake
 giflib
 highway
 make
+lcms
 libjpeg-turbo
 libpng
 libwebp
@@ -56,36 +57,8 @@ PackageBuild()
 		-b="$buildDir"
 		);
 
-
-	Log 'Downloading dependencies'
-	# instead of running the deps.sh script, get only dependencies 
-	# we will relly need. We could download the latest release from those and
-	# extract them at the dir libjxl wants, but I'm afraid there might be some
-	# sort of incompatibility, so I'll use the recommended commit
-	local depHash;
-	depHash=$(sed -n 's;THIRD_PARTY_SKCMS="\([^"]*\)";\1;p' "$sourceDir/deps.sh");
-	if [ $? -ne 0 ] || [ -z "$depHash" ]; then
-		Die 'unable to retrieve dependency commit hash';
-	fi
-
-	local depTarDownloadDir="$buildDir/tmp";
-	local depTarName='skcms.tar.gz';
-	DieIfFails Download \
-		"https://skia.googlesource.com/skcms/+archive/${depHash}.tar.gz" \
-		"$depTarDownloadDir" \
-		"$depTarName";
-
-	local depSourceDir="${sourceDir}/third_party/skcms";
-	DieIfFails mkdir -p "$depSourceDir";
-
-	local depTarPath="${depTarDownloadDir}/${depTarName}";
-	DieIfFails tar -C "$depSourceDir" -xf "$depTarPath";
-	DieIfFails rm "$depTarPath";
-
-
 	#apply all patches
 	DieIfFails ./patch.sh "$package" "$sourceDir";
-
 
 	# CMAKE will only find packages installed in non-standard locations if we pass
 	# where they are in CMAKE_PREFIX_PATH. But there is a catch, it expects the
@@ -119,16 +92,18 @@ PackageBuild()
 			-D JPEGXL_ENABLE_COVERAGE=OFF \
 			-D JPEGXL_ENABLE_DOXYGEN=OFF \
 			-D JPEGXL_ENABLE_EXAMPLES=OFF \
-			-D JPEGXL_ENABLE_SKCMS=ON \
-			-D JPEGXL_BUNDLE_SKCMS=ON \
+			-D JPEGXL_ENABLE_JPEGLI=OFF \
 			-D JPEGXL_ENABLE_MANPAGES=OFF \
+			-D JPEGXL_ENABLE_OPENEXR=OFF \
 			-D JPEGXL_ENABLE_PROFILER=OFF \
+			-D JPEGXL_ENABLE_SKCMS=OFF \
 			-D JPEGXL_ENABLE_SJPEG=OFF \
 			-D JPEGXL_ENABLE_PLUGINS=ON \
 			-D JPEGXL_ENABLE_PLUGIN_GIMP210=OFF \
 			-D JPEGXL_ENABLE_VIEWERS=OFF \
 			-D JPEGXL_FORCE_SYSTEM_BROTLI=ON \
 			-D JPEGXL_FORCE_SYSTEM_HWY=ON \
+			-D JPEGXL_FORCE_SYSTEM_LCMS2=ON \
 			-D JPEGXL_STATIC=ON \
 			-D JPEGXL_TEST_TOOLS=OFF \
 			" \
