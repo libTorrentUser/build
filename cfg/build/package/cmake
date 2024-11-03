@@ -47,7 +47,9 @@ PackageBuild()
 		--cmd-configure="bootstrap" \
 		--configure-options="\
 			--prefix=$prefix \
-			--parallel=$npp" \
+			--parallel=$npp \
+			-- -DBUILD_TESTING=OFF \
+			" \
 		--cmd-build="make" \
 		--build-options='cmake' \
 		--dest-dir="$destDir" \

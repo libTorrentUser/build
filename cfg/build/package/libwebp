@@ -63,7 +63,6 @@ PackageBuild()
 	#DieIfFails "./autogen.sh";
 	#DieIfFails cd -;
 
-	
 	DieIfFails ./make.sh \
 		-b="$buildDir" \
 		-s="$sourceDir" \

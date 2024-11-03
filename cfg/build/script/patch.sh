@@ -13,7 +13,7 @@ Execute()
 	local patchDir="../patch/${package}";
 	
 	# apply all patches	
-	if [ $(CountItems "$patchDir") -gt 0 ]; then
+	if [ -d "$patchDir" ] && [ $(CountItems "$patchDir") -gt 0 ]; then
 		for p in "$patchDir/"*; do
 			p=$(readlink -f "$p");
 			printf 'applying patch %s\n' "$p";

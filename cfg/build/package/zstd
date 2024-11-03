@@ -44,14 +44,7 @@ PackageBuild_zstd()
 	# apply all patches. Notice that, unlike what we did above, patches might be
 	# specific to a certain version of zstd we are building, so here we
 	# use the $package variable instead of hard-coding the package name
-	local patchDir="../patch/${package}";
-	if [ $(CountItems "$patchDir") -gt 0 ]; then
-		for p in "$patchDir/"*; do
-			p=$(readlink -f "$p");
-			printf 'applying patch %s\n' "$p";
-			DieIfFails patch -p1 -i "$p" -d "$sourceDir";
-		done;
-	fi
+	DieIfFails ./patch.sh "$package" "$sourceDir";
 
 	# when $fullBuild is set, we build everything. Otherwise we only
 	# build the specified target. And in order to build some targets we cannot

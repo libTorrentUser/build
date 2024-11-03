@@ -89,6 +89,8 @@ PackageBuild()
 		Die "something went wrong during the 'configure' stage";
 	fi
 
+	CFLAGS="$CFLAGS -ffat-lto-objects" \
+	CXXFLAGS="$CXXFLAGS -ffat-lto-objects" \
 	DieIfFails ./make.sh \
 		-b="$buildDir" \
 		-s="$sourceDir" \

@@ -79,8 +79,16 @@ PrintUsage()
 	This ID is a number and should be visible right below the project name on
 	its gitlab page or it the "three dots" actions menu
 
+	"gitlab--adelielinux"
+	same as "gitlab" but using git.aelielinux.org, as in
+	https://git.aelielinux.org/api/v4/projects/{projectID}/releases/permalink/latest
+	When using this flag, the value of --packge must be the gitlab project ID.
+	This ID is a number and should be visible right below the project name on
+	its gitlab page and also by clicking the the 3 vertical dots button
+	("more actions")
+
 	"gitlab-freedesktop"
-	same as "gitliba", but using freedesktop.org one, as in
+	same as "gitlab", but using freedesktop.org one, as in
 	https://gitlab.freedesktop.org/api/v4/projects/{projectID}/releases/permalink/latest
 	When using this flag, the value of --packge must be the gitlab project ID.
 	This ID is a number and should be visible right below the project name on
@@ -565,6 +573,13 @@ GitlabFreedesktop()
 }
 
 
+GitlabAdelieLinux()
+{
+	Gitlab 'https://git.adelielinux.org';
+}
+
+
+
 LatestVersion()
 {	
 	LogErr 'retrieving the latest source code version...';
@@ -581,6 +596,9 @@ LatestVersion()
 		;;
 		gitlab)
 			Gitlab;
+		;;
+		gitlab-adelielinux)
+			GitlabAdelieLinux;
 		;;
 		gitlab-freedesktop)
 			GitlabFreeDesktop;

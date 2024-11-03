@@ -104,7 +104,7 @@ content:
 		--configure-options=" \
 			--enable-option-checking=fatal \
 			--prefix=$prefix \
-			--enable-optimization=yes \
+			--disable-debug \
 			--disable-gdb \
 			--disable-profiling \
 			--enable-lto=yes" \

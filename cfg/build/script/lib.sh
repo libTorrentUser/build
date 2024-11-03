@@ -292,7 +292,13 @@ CountItems()
 	set -- "$dir"/.*
 
 	# -2 because of . and ..
-	n=$((n + $# -2));
+	# 
+	# NOTE:
+	# for some reason, as of bash 5.2.26, bash decided that "$dir"/.* no longer
+	# lists '.' and '..' 
+	if [ $# -gt 2 ]; then
+		n=$((n + $# - 2));
+	fi
 
 	printf '%i' $n;
 }

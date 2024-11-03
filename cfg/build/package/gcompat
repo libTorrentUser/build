@@ -1,0 +1,127 @@
+#!/bin/sh
+
+. ../script/lib.sh
+
+
+
+PackageBuildDependencies()
+{
+	printf '
+libucontext
+make
+musl-obstack
+';
+}
+
+
+PackageRuntimeDependencies()
+{
+	return 0;
+}
+
+
+PackageWarnings()
+{
+	return 0;
+	
+}
+
+
+PackageBuild()
+{
+	local buildDir="$1";
+	local prefix="$2";
+	local destDir="$3";
+	#local npp="$4";
+	local dirBin="$5";
+	local dirRoot="$6";
+	
+	local package='gcompat';
+
+	# download the latest source code
+	local sourceDir;
+	sourceDir=$(./latest.sh \
+		--package='57' \
+		--host='gitlab-adelielinux' \
+		-b="$buildDir"
+		);
+
+	if [ $? -ne 0  ] || [ -z "$sourceDir" ]; then
+		Die "unable to retrieve the latest version tar";
+	fi
+
+
+	# patch it, if needed
+	DieIfFails ./patch.sh "$package" "$sourceDir";
+
+
+	# build options depend on the platform
+	# https://sourceware.org/glibc/wiki/ABIList
+	local arch="$(uname -m)";
+	
+	local loaderName=;
+	case "$arch" in
+		armhf | armv7)
+			loaderName="ld-linux-armhf.so.3"
+			arch="arm"
+			;;
+		aarch64)
+			loaderName="ld-linux-aarch64.so.1"
+			;;
+		x86)
+			loaderName="ld-linux.so.2"
+			arch="i386"
+			;;
+		x86_64)
+			loaderName="ld-linux-x86-64.so.2"
+			;;
+		s390x)
+			loaderName="ld64.so.1"
+			;;
+		ppc64le)
+			loaderName="ld64.so.2"
+			arch="powerpc64"
+			;;
+		riscv64)			
+			loaderName="ld-linux-riscv64-lp64d.so.1"
+			;;
+		loongarch64)			
+			loaderName="ld-linux-loongarch-lp64d.so.1"
+			;;
+		*)
+			Die 'unknown machine architecture';
+			;;
+	esac
+
+	local linkerPath="/lib/ld-musl-${arch}.so.1";
+
+	local buildOptions="\
+		WITH_LIBUCONTEXT=1 \
+		WITH_OBSTACK=musl-obstack \
+		LINKER_PATH=$linkerPath \
+		LOADER_NAME=$loaderName";
+
+	local installOptions="${buildOptions} install";
+	
+	DieIfFails ./make.sh \
+		-b="$buildDir" \
+		-s="$sourceDir" \
+		--no-configure \
+		--in-source \
+		--build-options="$buildOptions" \
+		--dest-dir="$destDir" \
+		--install-options="$installOptions";
+
+		
+	# required symlink on 64-bit platforms
+	case "$arch" in
+		x86_64|powerpc64|aarch64|s390x|riscv64|loongarch64)
+			DieIfFails mkdir -p "${destDir}/lib64";
+			ln -sfv "../lib/$loaderName" "${destDir}/lib64/"
+			;;
+	esac
+	
+	for i in libc.so.6 libcrypt.so.1 libm.so.6 libpthread.so.0 libresolv.so.2 librt.so.1 libutil.so.1; do
+		ln -sfv 'libgcompat.so.0' "${destDir}/lib/${i}"
+	done
+}

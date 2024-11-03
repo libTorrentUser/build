@@ -406,6 +406,7 @@ InstallToDestDir()
 	case "$_cmdInstall" in		
 		meson)
 			SaveCommandScript 'install.sh' \
+				meson \
 				$_installOptions \
 				${_destDir:+--destdir "$_destDir"} \
 				--no-rebuild \
@@ -422,6 +423,7 @@ InstallToDestDir()
 		;;
 		*)	
 			SaveCommandScript 'install.sh' \
+				"$_cmdInstall" \
 				-C "$_objDir" \
 				$destDir \
 				$_installOptions;
