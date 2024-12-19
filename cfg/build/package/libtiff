@@ -55,7 +55,7 @@ PackageBuild()
 			DieIfFails mkdir -p "${buildDir}/${d}";
 		done
 
-		DieIfFails cd "${buildDir}/obj";
+		DieIfFails cd "${buildDir}/src";
 
 		Log "Configuring...";
 
@@ -83,6 +83,9 @@ PackageBuild()
 		# broken, but not all. Then again, autotools...)
 		local libSearchPath="$(printf '%s' "$LIBRARY_PATH" | tr ':' ' ')";
 		DieIfFails sed -i 's;sys_lib_dlsearch_path_spec=";\0'"$libSearchPath"' ;' "${buildDir}/obj/libtool";
+
+		# per archlinux
+		DieIfFails sed -i -e 's/ -shared / -Wl,-O1,--as-needed\0/g' "${buildDir}/obj/libtool";
 	);
 
 	if [ $? -ne 0  ]; then
@@ -96,6 +99,7 @@ PackageBuild()
 		-s="$sourceDir" \
 		--no-configure \
 		--dest-dir="$destDir" \
+		--in-source \
 		--install-options="install-strip";
 
 	local pkgconfigDir="$dirBin/pkgconfig";
